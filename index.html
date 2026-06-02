@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Content Distribution Plan — QFA U23</title>
+<title>Coach Content Planner</title>
 
 <!-- PWA -->
 <link rel="manifest" href="./manifest.json">
@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="QFA U23 CDP">
+<meta name="apple-mobile-web-app-title" content="Coach Content Planner">
 <meta name="mobile-web-app-capable" content="yes">
 
 <!-- Firebase (loaded from CDN; cached by the service worker for offline use) -->
@@ -211,7 +211,10 @@ select.camp-select:focus { outline: none; border-color: var(--accent); }
 .week-dates { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; }
 .btn-add-day { padding: 3px 8px; font-size: 10px; }
 
-.days-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
+.days-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; padding-bottom: 4px; }
+.dow-header-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 4px; }
+.dow-header { font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: var(--text3); text-align: center; padding: 2px 0; }
+.day-blank { border: 1px dashed var(--border); border-radius: var(--r); background: repeating-linear-gradient(45deg, transparent, transparent 6px, rgba(255,255,255,.012) 6px, rgba(255,255,255,.012) 12px); min-height: 80px; }
 
 /* ── PHYSIO DOMINANCE FOOTER ── */
 .physio-footer {
@@ -256,11 +259,10 @@ select.camp-select:focus { outline: none; border-color: var(--accent); }
 
 /* ── DAY CARD ── */
 .day-card {
-  min-width: var(--cell-w); max-width: var(--cell-w);
   border: 1px solid var(--border);
   border-radius: var(--r); overflow: hidden;
-  cursor: pointer; transition: border-color .15s, transform .1s;
-  position: relative; flex-shrink: 0;
+  cursor: pointer; transition: border-color .15s;
+  position: relative; min-width: 0;
 }
 .day-card:hover { border-color: var(--border2); transform: translateY(-1px); }
 .day-card.game    { border-color: #4a2080; }
@@ -296,6 +298,9 @@ select.camp-select:focus { outline: none; border-color: var(--accent); }
   font-size: 9px; color: var(--text2); margin-top: 3px;
   line-height: 1.4; white-space: pre-wrap; word-break: break-word;
 }
+.session-groups { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+.session-group { padding-left: 6px; }
+.group-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; }
 .session-physio-row { display: flex; align-items: center; gap: 5px; margin-top: 4px; }
 .physio-badge {
   font-size: 9px; font-weight: 600; padding: 1px 5px; border-radius: 3px;
@@ -504,6 +509,25 @@ select.camp-select:focus { outline: none; border-color: var(--accent); }
 .mv-dots { display: flex; gap: 3px; margin-top: 4px; }
 .mv-dot { width: 7px; height: 7px; border-radius: 2px; }
 
+/* ── DETAILED MONTH VIEW ── */
+.mvf-month { margin-bottom: 22px; }
+.mvf-title { font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 1.5px; margin-bottom: 8px; }
+.mvf-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.mvf-dow { font-size: 9px; text-transform: uppercase; letter-spacing: .5px; color: var(--text3); text-align: center; padding: 4px 0; }
+.mvf-cell { min-height: 92px; background: var(--surface); border: 1px solid var(--border); border-radius: 5px; padding: 5px 6px; cursor: pointer; transition: border-color .15s; overflow: hidden; }
+.mvf-cell:hover { border-color: var(--accent); }
+.mvf-empty { background: transparent; border: none; cursor: default; }
+.mvf-out { opacity: .35; cursor: default; }
+.mvf-game { border-color: #4a2080; }
+.mvf-num { font-size: 11px; color: var(--text2); display: flex; align-items: center; gap: 5px; margin-bottom: 4px; }
+.mvf-md { font-family: 'DM Mono', monospace; font-size: 8px; color: var(--accent2); background: var(--accent-dim); padding: 0 4px; border-radius: 3px; }
+.mvf-sess { margin-bottom: 5px; }
+.mvf-sess-head { font-size: 9px; font-weight: 600; color: var(--text); }
+.mvf-unit { padding-left: 5px; margin-top: 2px; }
+.mvf-glab { font-size: 8px; font-weight: 700; text-transform: uppercase; }
+.mvf-phys { font-size: 8px; font-weight: 700; text-transform: uppercase; }
+.mvf-cont { font-size: 9px; color: var(--text2); line-height: 1.35; white-space: pre-wrap; word-break: break-word; }
+
 /* ── TOOLTIP ── */
 .has-gap { gap: 6px; }
 
@@ -603,7 +627,7 @@ table.reg-table tbody tr:hover { background: var(--surface2); }
 
 <!-- HEADER -->
 <header class="app-header">
-  <div class="logo">QFA <span>U23</span> — Content Distribution Plan</div>
+  <div class="logo">COACH <span>CONTENT</span> PLANNER</div>
   <div class="header-sep"></div>
   <div class="area-switch">
     <button class="area-btn active" id="area-plan-btn" onclick="switchArea('plan')">PLAN</button>
@@ -795,36 +819,93 @@ table.reg-table tbody tr:hover { background: var(--surface2); }
           <input type="text" id="f-opponent" placeholder="e.g. Kuwait U23">
         </div>
       </div>
-      <div class="form-field" id="f-content-wrap">
-        <label>Tactical Content</label>
-        <textarea id="f-content" placeholder="Describe the tactical content of this session…" rows="4"></textarea>
+      <div id="split-toggle-wrap" style="display:flex;align-items:center;gap:8px;padding:4px 0">
+        <label style="font-size:11px;color:var(--text2);display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="f-split" onchange="toggleSplit()"> Split into two groups (e.g. one group Recovery, another Tension)
+        </label>
       </div>
-      <div id="physio-section">
-        <div class="form-row">
-          <div class="form-field">
-            <label>Physiological Dominance</label>
-            <select id="f-physio" onchange="updatePhysioPreview()">
-              <option value="">— Not set —</option>
-              <option value="Duration">Duration</option>
-              <option value="Tension">Tension</option>
-              <option value="Pre-Match">Pre-Match</option>
-              <option value="Max Specificity">Max Specificity</option>
-              <option value="Recovery">Recovery</option>
-              <option value="Speed">Speed</option>
-            </select>
-          </div>
-          <div class="form-field">
-            <label>Intensity Level (1–5)</label>
-            <div class="intensity-picker" id="intensity-picker">
-              <button class="int-btn" data-v="1" onclick="setIntensity(1)">1</button>
-              <button class="int-btn" data-v="2" onclick="setIntensity(2)">2</button>
-              <button class="int-btn" data-v="3" onclick="setIntensity(3)">3</button>
-              <button class="int-btn" data-v="4" onclick="setIntensity(4)">4</button>
-              <button class="int-btn" data-v="5" onclick="setIntensity(5)">5</button>
+
+      <!-- SINGLE MODE -->
+      <div id="single-mode">
+        <div class="form-field" id="f-content-wrap">
+          <label>Tactical Content</label>
+          <textarea id="f-content" placeholder="Describe the tactical content of this session…" rows="4"></textarea>
+        </div>
+        <div id="physio-section">
+          <div class="form-row">
+            <div class="form-field">
+              <label>Physiological Dominance</label>
+              <select id="f-physio" onchange="updatePhysioPreview()">
+                <option value="">— Not set —</option>
+                <option value="Duration">Duration</option>
+                <option value="Tension">Tension</option>
+                <option value="Pre-Match">Pre-Match</option>
+                <option value="Max Specificity">Max Specificity</option>
+                <option value="Recovery">Recovery</option>
+                <option value="Speed">Speed</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Intensity Level (1–5)</label>
+              <div class="intensity-picker" id="intensity-picker">
+                <button class="int-btn" data-v="1" onclick="setIntensity(1)">1</button>
+                <button class="int-btn" data-v="2" onclick="setIntensity(2)">2</button>
+                <button class="int-btn" data-v="3" onclick="setIntensity(3)">3</button>
+                <button class="int-btn" data-v="4" onclick="setIntensity(4)">4</button>
+                <button class="int-btn" data-v="5" onclick="setIntensity(5)">5</button>
+              </div>
             </div>
           </div>
+          <div class="physio-preview physio-none" id="physio-preview">No physiological type selected</div>
         </div>
-        <div class="physio-preview physio-none" id="physio-preview">No physiological type selected</div>
+      </div>
+
+      <!-- SPLIT (TWO GROUPS) MODE -->
+      <div id="split-mode" style="display:none">
+        <div class="form-row" style="gap:14px">
+          <div class="form-field" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:10px">
+            <input type="text" id="gA-label" value="Group A" style="font-weight:600;font-size:12px;background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--text);padding:2px 0;margin-bottom:8px;width:100%">
+            <label>Tactical Content</label>
+            <textarea id="gA-content" rows="3" placeholder="Group A content…"></textarea>
+            <label style="margin-top:8px">Physiological Dominance</label>
+            <select id="gA-physio" onchange="updateGroupPreview('A')">
+              <option value="">— Not set —</option>
+              <option value="Duration">Duration</option><option value="Tension">Tension</option>
+              <option value="Pre-Match">Pre-Match</option><option value="Max Specificity">Max Specificity</option>
+              <option value="Recovery">Recovery</option><option value="Speed">Speed</option>
+            </select>
+            <label style="margin-top:8px">Intensity (1–5)</label>
+            <div class="intensity-picker" id="gA-intpick">
+              <button class="int-btn" data-v="1" onclick="setGroupIntensity('A',1)">1</button>
+              <button class="int-btn" data-v="2" onclick="setGroupIntensity('A',2)">2</button>
+              <button class="int-btn" data-v="3" onclick="setGroupIntensity('A',3)">3</button>
+              <button class="int-btn" data-v="4" onclick="setGroupIntensity('A',4)">4</button>
+              <button class="int-btn" data-v="5" onclick="setGroupIntensity('A',5)">5</button>
+            </div>
+            <div class="physio-preview physio-none" id="gA-preview" style="margin-top:8px">Not set</div>
+          </div>
+          <div class="form-field" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:10px">
+            <input type="text" id="gB-label" value="Group B" style="font-weight:600;font-size:12px;background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--text);padding:2px 0;margin-bottom:8px;width:100%">
+            <label>Tactical Content</label>
+            <textarea id="gB-content" rows="3" placeholder="Group B content…"></textarea>
+            <label style="margin-top:8px">Physiological Dominance</label>
+            <select id="gB-physio" onchange="updateGroupPreview('B')">
+              <option value="">— Not set —</option>
+              <option value="Duration">Duration</option><option value="Tension">Tension</option>
+              <option value="Pre-Match">Pre-Match</option><option value="Max Specificity">Max Specificity</option>
+              <option value="Recovery">Recovery</option><option value="Speed">Speed</option>
+            </select>
+            <label style="margin-top:8px">Intensity (1–5)</label>
+            <div class="intensity-picker" id="gB-intpick">
+              <button class="int-btn" data-v="1" onclick="setGroupIntensity('B',1)">1</button>
+              <button class="int-btn" data-v="2" onclick="setGroupIntensity('B',2)">2</button>
+              <button class="int-btn" data-v="3" onclick="setGroupIntensity('B',3)">3</button>
+              <button class="int-btn" data-v="4" onclick="setGroupIntensity('B',4)">4</button>
+              <button class="int-btn" data-v="5" onclick="setGroupIntensity('B',5)">5</button>
+            </div>
+            <div class="physio-preview physio-none" id="gB-preview" style="margin-top:8px">Not set</div>
+          </div>
+        </div>
       </div>
     </div>
     <div class="modal-footer">
@@ -1271,6 +1352,14 @@ const PHYSIO_META = {
 function getPhysioCls(p) { return PHYSIO_META[p]?.cls || 'physio-none'; }
 function getPhysioBar(p) { return PHYSIO_META[p]?.bar || 'var(--text3)'; }
 
+// Returns the content/physio units of a session: either its two groups, or a single unit.
+function sessionUnits(s) {
+  if (s.groups && s.groups.length) return s.groups.map(g => ({
+    label: g.label || '', content: g.content || '', physio: g.physio || '', intensity: g.intensity || 0
+  }));
+  return [{ label:'', content: s.content || '', physio: s.physio || '', intensity: s.intensity || 0 }];
+}
+
 // Sequential session counter across camp
 function getSessionNumbers(camp) {
   const map = {}; // date -> [sessionNums]
@@ -1517,6 +1606,7 @@ function setCampWeekStart(id, val) {
 // ═══════════════════════════════════════════
 let _editSession = null; // {campId, dayDate, sessionId}
 let _intensity = 0;
+let _gIntensity = { A:0, B:0 };
 
 function openAddSession(dayDate) {
   _editSession = { campId: state.activeCampId, dayDate, sessionId: null };
@@ -1528,8 +1618,11 @@ function openAddSession(dayDate) {
   document.getElementById('f-content').value = '';
   document.getElementById('f-physio').value = '';
   document.getElementById('btn-delete-session').style.display = 'none';
+  document.getElementById('f-split').checked = false;
+  resetGroupFields();
   setIntensity(0);
   updatePhysioPreview();
+  toggleSplit();
   onActivityChange();
   openModal('session-modal');
 }
@@ -1544,37 +1637,75 @@ function openEditSession(dayDate, sessionId) {
   document.getElementById('f-time').value = sess.time || '17:00';
   document.getElementById('f-location').value = sess.location || '';
   document.getElementById('f-opponent').value = sess.opponent || '';
-  document.getElementById('f-content').value = sess.content || '';
-  document.getElementById('f-physio').value = sess.physio || '';
   document.getElementById('btn-delete-session').style.display = '';
-  setIntensity(sess.intensity || 0);
+
+  resetGroupFields();
+  const hasGroups = sess.groups && sess.groups.length;
+  document.getElementById('f-split').checked = !!hasGroups;
+  if (hasGroups) {
+    ['A','B'].forEach((g,i)=>{
+      const grp = sess.groups[i] || {};
+      document.getElementById('g'+g+'-label').value = grp.label || ('Group '+g);
+      document.getElementById('g'+g+'-content').value = grp.content || '';
+      document.getElementById('g'+g+'-physio').value = grp.physio || '';
+      setGroupIntensity(g, grp.intensity || 0);
+      updateGroupPreview(g);
+    });
+    document.getElementById('f-content').value = '';
+    document.getElementById('f-physio').value = '';
+    setIntensity(0);
+  } else {
+    document.getElementById('f-content').value = sess.content || '';
+    document.getElementById('f-physio').value = sess.physio || '';
+    setIntensity(sess.intensity || 0);
+  }
   updatePhysioPreview();
+  toggleSplit();
   onActivityChange();
   openModal('session-modal');
+}
+
+function resetGroupFields() {
+  ['A','B'].forEach(g=>{
+    document.getElementById('g'+g+'-label').value = 'Group '+g;
+    document.getElementById('g'+g+'-content').value = '';
+    document.getElementById('g'+g+'-physio').value = '';
+    setGroupIntensity(g, 0);
+    updateGroupPreview(g);
+  });
+}
+
+function toggleSplit() {
+  const on = document.getElementById('f-split').checked;
+  const v = document.getElementById('f-activity').value;
+  const isOff = v === 'Day Off' || v === 'Travel';
+  document.getElementById('single-mode').style.display = (on || isOff) ? 'none' : '';
+  document.getElementById('split-mode').style.display = (on && !isOff) ? '' : 'none';
 }
 
 function onActivityChange() {
   const v = document.getElementById('f-activity').value;
   const isOff = v === 'Day Off' || v === 'Travel';
-  document.getElementById('physio-section').style.display = isOff ? 'none' : '';
-  document.getElementById('f-content-wrap').style.display = isOff ? 'none' : '';
+  document.getElementById('split-toggle-wrap').style.display = isOff ? 'none' : '';
+  toggleSplit();
 }
 
-function setIntensity(v) {
-  _intensity = v;
-  document.querySelectorAll('.int-btn').forEach(btn => {
+function setIntensity(v) { _intensity = v; paintIntensity('intensity-picker', v); }
+function setGroupIntensity(g, v) { _gIntensity[g] = v; paintIntensity('g'+g+'-intpick', v); }
+
+function paintIntensity(pickerId, v) {
+  const picker = document.getElementById(pickerId);
+  if (!picker) return;
+  picker.querySelectorAll('.int-btn').forEach(btn => {
     const bv = parseInt(btn.dataset.v);
-    btn.classList.toggle('active', bv <= v && v > 0);
-    // Color active buttons
-    if (bv <= v && v > 0) {
-      btn.style.background = getComputedStyle(document.documentElement).getPropertyValue(
+    const on = bv <= v && v > 0;
+    btn.classList.toggle('active', on);
+    if (on) {
+      const col = getComputedStyle(document.documentElement).getPropertyValue(
         v <= 2 ? '--rec-col' : v === 3 ? '--ten-col' : v === 4 ? '--pre-col' : '--max-col'
       ).trim() || '#4f72ff';
-      btn.style.borderColor = btn.style.background;
-    } else {
-      btn.style.background = '';
-      btn.style.borderColor = '';
-    }
+      btn.style.background = col; btn.style.borderColor = col;
+    } else { btn.style.background = ''; btn.style.borderColor = ''; }
   });
 }
 
@@ -1585,22 +1716,45 @@ function updatePhysioPreview() {
   el.textContent = v ? v + ((_intensity > 0) ? ' · Level ' + _intensity : '') : 'No physiological type selected';
 }
 
+function updateGroupPreview(g) {
+  const v = document.getElementById('g'+g+'-physio').value;
+  const el = document.getElementById('g'+g+'-preview');
+  el.className = 'physio-preview ' + (v ? getPhysioCls(v) : 'physio-none');
+  el.textContent = v ? v + ((_gIntensity[g] > 0) ? ' · Level ' + _gIntensity[g] : '') : 'Not set';
+}
+
 function saveSession() {
   const { campId, dayDate, sessionId } = _editSession;
   const camp = state.camps.find(c => c.id === campId); if (!camp) return;
   let day = camp.days.find(d => d.date === dayDate);
   if (!day) { day = { date: dayDate, sessions: [] }; camp.days.push(day); }
 
+  const split = document.getElementById('f-split').checked;
+  const v = document.getElementById('f-activity').value;
+  const isOff = v === 'Day Off' || v === 'Travel';
+
   const sess = {
     id: sessionId || uid(),
-    activity: document.getElementById('f-activity').value,
+    activity: v,
     time: document.getElementById('f-time').value,
     location: document.getElementById('f-location').value.trim(),
     opponent: document.getElementById('f-opponent').value.trim(),
-    content: document.getElementById('f-content').value.trim(),
-    physio: document.getElementById('f-physio').value,
-    intensity: _intensity,
   };
+
+  if (split && !isOff) {
+    sess.groups = ['A','B'].map(g => ({
+      label: document.getElementById('g'+g+'-label').value.trim() || ('Group '+g),
+      content: document.getElementById('g'+g+'-content').value.trim(),
+      physio: document.getElementById('g'+g+'-physio').value,
+      intensity: _gIntensity[g],
+    }));
+    sess.content = ''; sess.physio = ''; sess.intensity = 0;
+  } else {
+    sess.content = document.getElementById('f-content').value.trim();
+    sess.physio = document.getElementById('f-physio').value;
+    sess.intensity = _intensity;
+    sess.groups = null;
+  }
 
   if (sessionId) {
     const idx = day.sessions.findIndex(s => s.id === sessionId);
@@ -1670,8 +1824,13 @@ function renderChart() {
 
     // Sum intensity for the day (max across sessions for visual clarity)
     const sessions = day.sessions.filter(s => s.activity !== 'Day Off' && s.activity !== 'Travel');
-    if (sessions.length === 0) {
-      // empty slot
+    // expand into units (groups count individually)
+    const units = [];
+    sessions.forEach(s => {
+      const isGameSess = s.activity === 'Game' || s.activity === 'Preparation Game';
+      sessionUnits(s).forEach(u => units.push({ ...u, isGame: isGameSess, activity: s.activity }));
+    });
+    if (units.length === 0) {
       const bar = document.createElement('div');
       bar.className = 'chart-bar';
       bar.style.height = '2px';
@@ -1679,17 +1838,15 @@ function renderChart() {
       bar.style.borderRadius = '2px';
       group.appendChild(bar);
     } else {
-      sessions.forEach(s => {
+      units.forEach(u => {
         const bar = document.createElement('div');
         bar.className = 'chart-bar';
-        const intv = s.intensity || 0;
+        const intv = u.intensity || 0;
         const hPct = intv > 0 ? (intv / 5) * 56 : 4;
         bar.style.height = hPct + 'px';
-        bar.style.background = s.activity === 'Game' || s.activity === 'Preparation Game'
-          ? 'var(--game-col)'
-          : (s.physio ? getPhysioBar(s.physio) : 'var(--border2)');
+        bar.style.background = u.isGame ? 'var(--game-col)' : (u.physio ? getPhysioBar(u.physio) : 'var(--border2)');
         const mdRef = getMDRef(day.date, gameDates);
-        bar.dataset.tip = fmtDateShort(day.date) + (mdRef ? ' (' + mdRef + ')' : '') + ' · ' + (s.physio || s.activity) + (intv > 0 ? ' L' + intv : '');
+        bar.dataset.tip = fmtDateShort(day.date) + (mdRef ? ' (' + mdRef + ')' : '') + ' · ' + (u.physio || u.activity) + (intv > 0 ? ' L' + intv : '');
         group.appendChild(bar);
       });
     }
@@ -1822,41 +1979,61 @@ function renderMonthView(camp) {
   const area = document.getElementById('calendar-area');
   const days = [...camp.days].sort((a,b)=>a.date.localeCompare(b.date));
   const gameDates = getGameDates(camp);
+  const sessNums = getSessionNumbers(camp);
+  let wsd = camp.weekStartDay;
+  if (wsd === undefined || wsd === null) {
+    const fp = days[0].date.split('-').map(Number);
+    wsd = new Date(Date.UTC(fp[0], fp[1]-1, fp[2])).getUTCDay();
+  }
+  const dowOrder = Array.from({length:7}, (_,i) => DAYS[(wsd + i) % 7]);
+
   // group by year-month
   const months = {};
-  days.forEach(d=>{
-    const key = d.date.slice(0,7);
-    (months[key] = months[key] || []).push(d);
-  });
+  days.forEach(d=>{ const key = d.date.slice(0,7); (months[key] = months[key] || []).push(d); });
 
   let html = '';
   Object.keys(months).sort().forEach(key=>{
-    const [y,m] = key.split('-');
-    const monthName = MONTHS[parseInt(m)-1] + ' ' + y;
-    const first = new Date(key + '-01T00:00:00');
-    const startDow = first.getDay(); // 0 Sun
-    const daysInMonth = new Date(parseInt(y), parseInt(m), 0).getDate();
+    const [y,m] = key.split('-').map(Number);
+    const monthName = MONTHS[m-1] + ' ' + y;
+    const daysInMonth = new Date(y, m, 0).getDate();
     const byDate = {}; months[key].forEach(d=>byDate[d.date]=d);
 
-    let cells = '';
-    // weekday header
-    DAYS.forEach(dn=>cells += `<div class="mv-dow">${dn}</div>`);
-    for (let i=0;i<startDow;i++) cells += `<div class="mv-cell mv-empty"></div>`;
+    // leading offset so day 1 lands in its weekday column
+    const firstDow = new Date(Date.UTC(y, m-1, 1)).getUTCDay();
+    const lead = (firstDow - wsd + 7) % 7;
+
+    let cells = dowOrder.map(dn=>`<div class="mvf-dow">${dn}</div>`).join('');
+    for (let i=0;i<lead;i++) cells += `<div class="mvf-cell mvf-empty"></div>`;
     for (let dnum=1; dnum<=daysInMonth; dnum++) {
-      const dateStr = `${y}-${m}-${String(dnum).padStart(2,'0')}`;
+      const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(dnum).padStart(2,'0')}`;
       const d = byDate[dateStr];
-      if (!d) { cells += `<div class="mv-cell mv-out"><div class="mv-num">${dnum}</div></div>`; continue; }
+      if (!d) { cells += `<div class="mvf-cell mvf-out"><div class="mvf-num">${dnum}</div></div>`; continue; }
       const md = getMDRef(dateStr, gameDates);
       const isGame = d.sessions.some(x=>x.activity==='Game');
-      const physios = d.sessions.filter(x=>x.physio).map(x=>x.physio);
-      const dots = physios.map(p=>`<span class="mv-dot" style="background:${planPhysioColor(p)}"></span>`).join('');
-      cells += `<div class="mv-cell${isGame?' mv-game':''}" onclick="(function(){state.activeArea='plan';})();openDayQuick('${dateStr}')">
-        <div class="mv-num">${dnum}${md?` <span class="mv-md">${md}</span>`:''}</div>
-        <div class="mv-acts">${d.sessions.map(x=>`<div class="mv-act">${x.activity==='Training'?'T':x.activity==='Game'?'⚽':x.activity==='Day Off'?'·':x.activity[0]}</div>`).join('')}</div>
-        <div class="mv-dots">${dots}</div>
+      const dayNums = sessNums[dateStr] || [];
+      let inner = '';
+      d.sessions.forEach((s,si)=>{
+        const sesNum = dayNums[si];
+        const label = (s.activity==='Training' && sesNum) ? 'T'+sesNum : (s.activity==='Game'?'⚽ Game':s.activity);
+        inner += `<div class="mvf-sess">
+          <div class="mvf-sess-head">${label}${s.time?` · ${s.time}`:''}${s.location?` · ${s.location}`:''}</div>`;
+        sessionUnits(s).forEach(u=>{
+          if (!u.content && !u.physio && !u.label) return;
+          const col = u.physio ? planPhysioColor(u.physio) : 'var(--text3)';
+          inner += `<div class="mvf-unit" style="border-left:2px solid ${col}">
+            ${u.label?`<span class="mvf-glab" style="color:${col}">${u.label}: </span>`:''}
+            ${u.physio?`<span class="mvf-phys" style="color:${col}">${u.physio}${u.intensity?(' L'+u.intensity):''}</span>`:''}
+            ${u.content?`<div class="mvf-cont">${u.content}</div>`:''}
+          </div>`;
+        });
+        inner += `</div>`;
+      });
+      cells += `<div class="mvf-cell${isGame?' mvf-game':''}" onclick="openDayQuick('${dateStr}')">
+        <div class="mvf-num">${dnum}${md?` <span class="mvf-md">${md}</span>`:''}</div>
+        ${inner}
       </div>`;
     }
-    html += `<div class="mv-month"><div class="mv-title">${monthName}</div><div class="mv-grid">${cells}</div></div>`;
+    html += `<div class="mvf-month"><div class="mvf-title">${monthName}</div><div class="mvf-grid">${cells}</div></div>`;
   });
 
   area.innerHTML = html;
@@ -1941,29 +2118,37 @@ function renderCalendar() {
     const fp = days[0].date.split('-').map(Number);
     wsd = new Date(Date.UTC(fp[0], fp[1]-1, fp[2])).getUTCDay();
   }
-  // Group into weeks, breaking whenever we hit the chosen start weekday (after the first day).
+  const dowOf = ds => { const p = ds.split('-').map(Number); return new Date(Date.UTC(p[0],p[1]-1,p[2])).getUTCDay(); };
+  const colOf = ds => (dowOf(ds) - wsd + 7) % 7;   // 0..6 column index
+
+  // Group into aligned weeks: each week is a 7-slot array; a new week starts at the
+  // week-start weekday OR at the very first day. Days sit in their weekday column.
   const weeks = [];
-  let week = [];
-  days.forEach((day) => {
-    const p = day.date.split('-').map(Number);
-    const dow = new Date(Date.UTC(p[0], p[1]-1, p[2])).getUTCDay();
-    if (week.length && dow === wsd) { weeks.push(week); week = []; }
-    week.push(day);
+  let cur = null;
+  days.forEach(day => {
+    const col = colOf(day.date);
+    if (cur === null || (col === 0 && cur.some(x=>x))) { cur = [null,null,null,null,null,null,null]; weeks.push(cur); }
+    cur[col] = day;
   });
-  if (week.length) weeks.push(week);
+
+  // Weekday header labels in the chosen order
+  const dowOrder = Array.from({length:7}, (_,i) => DAYS[(wsd + i) % 7]);
 
   let html = '';
   weeks.forEach((wk, wi) => {
-    const wStart = fmtDate(wk[0].date);
-    const wEnd = fmtDate(wk[wk.length-1].date);
+    const realDays = wk.filter(Boolean);
+    const wStart = fmtDate(realDays[0].date);
+    const wEnd = fmtDate(realDays[realDays.length-1].date);
     html += `<div class="week-block">
       <div class="week-header">
         <div class="week-label">Week ${wi+1}</div>
         <div class="week-dates">${wStart} — ${wEnd}</div>
       </div>
+      <div class="dow-header-row">${dowOrder.map(dn=>`<div class="dow-header">${dn}</div>`).join('')}</div>
       <div class="days-row">`;
 
     wk.forEach(day => {
+      if (!day) { html += `<div class="day-blank"></div>`; return; }
       const mdRef = getMDRef(day.date, gameDates);
       const isGame = day.sessions.some(s => s.activity === 'Game');
       const isDayOff = day.sessions.length > 0 && day.sessions.every(s => s.activity === 'Day Off');
@@ -1992,39 +2177,51 @@ function renderCalendar() {
       } else {
         const dayNums = sessNums[day.date] || [];
         day.sessions.forEach((sess, si) => {
-          const cls = getPhysioCls(sess.physio || (
-            sess.activity === 'Game' || sess.activity === 'Preparation Game' ? '_game' : ''
-          )) + (sess.activity === 'Game' || sess.activity === 'Preparation Game' ? ' physio-game' : '');
+          const isGameSess = sess.activity === 'Game' || sess.activity === 'Preparation Game';
           const sesNum = dayNums[si];
-          const actLabel = (sess.activity === 'Training' && sesNum)
-            ? 'Training ' + sesNum
-            : sess.activity;
+          const actLabel = (sess.activity === 'Training' && sesNum) ? 'Training ' + sesNum : sess.activity;
+          const hasGroups = sess.groups && sess.groups.length;
+          const headCls = isGameSess ? 'physio-game' : (hasGroups ? '' : getPhysioCls(sess.physio));
 
-          html += `<div class="session-chip ${cls}" onclick="openEditSession('${day.date}','${sess.id}')">
+          html += `<div class="session-chip ${headCls}" onclick="openEditSession('${day.date}','${sess.id}')">
             <div class="session-activity">${actLabel}</div>`;
-
           if (sess.time) html += `<div class="session-time">${sess.time}${sess.location ? ' · ' + sess.location : ''}</div>`;
           if (sess.opponent) html += `<div class="session-opponent" style="color:${isGame ? 'var(--game-col)' : 'var(--text2)'}">vs ${sess.opponent}</div>`;
-          if (sess.content) html += `<div class="session-content-preview">${sess.content}</div>`;
+
+          if (hasGroups) {
+            html += `<div class="session-groups">`;
+            sess.groups.forEach(g => {
+              const gc = getPhysioBar(g.physio);
+              html += `<div class="session-group" style="border-left:2px solid ${g.physio?gc:'var(--border2)'}">
+                <div class="group-label" style="color:${g.physio?gc:'var(--text2)'}">${g.label||''}</div>
+                ${g.content ? `<div class="session-content-preview">${g.content}</div>` : ''}
+              </div>`;
+            });
+            html += `</div>`;
+          } else if (sess.content) {
+            html += `<div class="session-content-preview">${sess.content}</div>`;
+          }
           html += `</div>`;
         });
         html += `<button class="btn-add-session" onclick="openAddSession('${day.date}')">+ session</button>`;
       }
 
-      // ── PHYSIOLOGICAL DOMINANCE FOOTER ──
-      const physioSessions = day.sessions.filter(s =>
-        s.physio && s.activity !== 'Day Off' && s.activity !== 'Travel'
-      );
+      // ── PHYSIOLOGICAL DOMINANCE FOOTER (one block per unit/group) ──
+      const footerUnits = [];
+      day.sessions.forEach(s => {
+        if (s.activity === 'Day Off' || s.activity === 'Travel') return;
+        sessionUnits(s).forEach(u => { if (u.physio) footerUnits.push(u); });
+      });
       html += `</div>`; // close session-list
 
-      if (physioSessions.length > 0) {
+      if (footerUnits.length > 0) {
         html += `<div class="physio-footer">`;
-        physioSessions.forEach(sess => {
-          const col  = getPhysioBar(sess.physio);
-          const intv = sess.intensity || 0;
+        footerUnits.forEach(u => {
+          const col  = getPhysioBar(u.physio);
+          const intv = u.intensity || 0;
           const barH = intv > 0 ? Math.round((intv / 5) * 18) : 4;
           html += `<div class="physio-footer-block" style="flex:1;background:${col}22;border-top:2px solid ${col}">
-            <div class="physio-footer-label" style="color:${col}">${sess.physio}</div>
+            <div class="physio-footer-label" style="color:${col}">${u.physio}</div>
             <div class="physio-footer-bar-wrap">
               <div class="physio-footer-bar" style="height:${barH}px;background:${col}"></div>
             </div>
