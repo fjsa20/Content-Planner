@@ -36,13 +36,13 @@
 
   --dur-col: #2e9e4f; --dur-bg: #0d2417; --dur-bar: #2e9e4f;   /* Duration - green */
   --ten-col: #3b82f6; --ten-bg: #0a1a33; --ten-bar: #3b82f6;   /* Tension - blue */
-  --pre-col: #f0a830; --pre-bg: #2b1f08; --pre-bar: #f0a830;   /* Pre-Match - light orange */
+  --pre-col: #ece49a; --pre-bg: #2a2814; --pre-bar: rgba(236,228,154,0.62); /* Pre-Match - light yellow, transparent */
   --max-col: #11703a; --max-bg: #06160d; --max-bar: #11703a;   /* Max Specificity - dark green */
   --rec-col: #7cc97c; --rec-bg: #122b12; --rec-bar: #7cc97c;   /* Recovery - light green */
   --vel-col: #e6d020; --vel-bg: #29260a; --vel-bar: #e6d020;   /* Speed - yellow */
-  --game-col: #b070ff; --game-bg: #1a0835;
-  --prep-col: #8080ff; --prep-bg: #100e35;
-  --dayoff-col: #e8eaf2; --dayoff-bg: #1a1d26;                 /* Day Off - white */
+  --game-col: #11703a; --game-bg: #06160d;                     /* Game = Max Specificity (dark green) */
+  --prep-col: #11703a; --prep-bg: #06160d;
+  --dayoff-col: rgba(232,234,242,0.55); --dayoff-bg: rgba(232,234,242,0.06); /* Day Off - translucent white */
   --travel-col: #e07b1a; --travel-bg: #2b1808;                 /* Travel - orange */
   --other-col: #aab2c5; --other-bg: #1c2030;                   /* Others - light grey */
 
@@ -178,7 +178,9 @@ select.camp-select:focus { outline: none; border-color: var(--accent); }
 }
 .chart-wrap { position: relative; height: 70px; overflow-x: auto; }
 #load-chart { display: flex; align-items: flex-end; gap: 2px; height: 60px; min-width: 100%; }
-.chart-bar-group { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 18px; flex: 1; max-width: 36px; }
+.chart-bar-group { display: flex; flex-direction: column; align-items: stretch; justify-content: flex-end; gap: 2px; min-width: 18px; flex: 1; max-width: 40px; }
+.chart-session-row { display: flex; align-items: flex-end; justify-content: center; gap: 2px; }
+.chart-session-row .chart-bar { flex: 1; }
 .chart-bar {
   width: 100%; border-radius: 2px 2px 0 0;
   transition: height .3s ease;
@@ -281,7 +283,7 @@ select.camp-select:focus { outline: none; border-color: var(--accent); }
   color: var(--accent); background: var(--accent-dim);
   padding: 1px 5px; border-radius: 3px;
 }
-.card-md.game-md { background: #2a1050; color: var(--game-col); }
+.card-md.game-md { background: #0d3a1e; color: var(--max-col); }
 
 .session-list { padding: 4px; display: flex; flex-direction: column; gap: 3px; }
 .session-chip {
@@ -336,7 +338,7 @@ select.camp-select:focus { outline: none; border-color: var(--accent); }
 .physio-recovery  { background: var(--rec-bg); color: var(--rec-col); }
 .physio-speed     { background: var(--vel-bg); color: var(--vel-col); }
 .physio-velocity  { background: var(--vel-bg); color: var(--vel-col); }
-.physio-game      { background: var(--game-bg); color: var(--game-col); }
+.physio-game      { background: var(--max-bg); color: var(--max-col); }
 .physio-none      { background: var(--surface3); color: var(--text3); }
 
 /* ── ATT/DEF TAB ── */
@@ -691,7 +693,6 @@ table.reg-table tbody tr:hover { background: var(--surface2); }
       <div class="legend-item"><div class="legend-dot" style="background:var(--max-col)"></div>Max Specificity</div>
       <div class="legend-item"><div class="legend-dot" style="background:var(--rec-col)"></div>Recovery</div>
       <div class="legend-item"><div class="legend-dot" style="background:var(--vel-col)"></div>Speed</div>
-      <div class="legend-item"><div class="legend-dot" style="background:var(--game-col)"></div>Game/Match</div>
     </div>
   </div>
   <div class="calendar-section" id="calendar-area">
@@ -1822,15 +1823,10 @@ function renderChart() {
     const group = document.createElement('div');
     group.className = 'chart-bar-group';
 
-    // Sum intensity for the day (max across sessions for visual clarity)
     const sessions = day.sessions.filter(s => s.activity !== 'Day Off' && s.activity !== 'Travel');
-    // expand into units (groups count individually)
-    const units = [];
-    sessions.forEach(s => {
-      const isGameSess = s.activity === 'Game' || s.activity === 'Preparation Game';
-      sessionUnits(s).forEach(u => units.push({ ...u, isGame: isGameSess, activity: s.activity }));
-    });
-    if (units.length === 0) {
+    const mdRef = getMDRef(day.date, gameDates);
+
+    if (sessions.length === 0) {
       const bar = document.createElement('div');
       bar.className = 'chart-bar';
       bar.style.height = '2px';
@@ -1838,16 +1834,23 @@ function renderChart() {
       bar.style.borderRadius = '2px';
       group.appendChild(bar);
     } else {
-      units.forEach(u => {
-        const bar = document.createElement('div');
-        bar.className = 'chart-bar';
-        const intv = u.intensity || 0;
-        const hPct = intv > 0 ? (intv / 5) * 56 : 4;
-        bar.style.height = hPct + 'px';
-        bar.style.background = u.isGame ? 'var(--game-col)' : (u.physio ? getPhysioBar(u.physio) : 'var(--border2)');
-        const mdRef = getMDRef(day.date, gameDates);
-        bar.dataset.tip = fmtDateShort(day.date) + (mdRef ? ' (' + mdRef + ')' : '') + ' · ' + (u.physio || u.activity) + (intv > 0 ? ' L' + intv : '');
-        group.appendChild(bar);
+      // Each session = one row (rows stack vertically when there are 2+ trainings).
+      // Within a row, a split session's two groups sit side by side.
+      sessions.forEach(s => {
+        const isGameSess = s.activity === 'Game' || s.activity === 'Preparation Game';
+        const row = document.createElement('div');
+        row.className = 'chart-session-row';
+        sessionUnits(s).forEach(u => {
+          const bar = document.createElement('div');
+          bar.className = 'chart-bar';
+          const intv = u.intensity || 0;
+          bar.style.height = (intv > 0 ? (intv / 5) * 50 : 4) + 'px';
+          bar.style.background = isGameSess ? 'var(--max-bar)' : (u.physio ? getPhysioBar(u.physio) : 'var(--border2)');
+          bar.dataset.tip = fmtDateShort(day.date) + (mdRef ? ' (' + mdRef + ')' : '') + ' · '
+            + (u.label ? u.label + ': ' : '') + (u.physio || u.activity) + (intv > 0 ? ' L' + intv : '');
+          row.appendChild(bar);
+        });
+        group.appendChild(row);
       });
     }
 
@@ -1882,7 +1885,6 @@ function ensureChartHeader() {
         <div class="legend-item"><div class="legend-dot" style="background:var(--max-col)"></div>Max Specificity</div>
         <div class="legend-item"><div class="legend-dot" style="background:var(--rec-col)"></div>Recovery</div>
         <div class="legend-item"><div class="legend-dot" style="background:var(--vel-col)"></div>Speed</div>
-        <div class="legend-item"><div class="legend-dot" style="background:var(--game-col)"></div>Game/Match</div>
       </div>`;
   }
 }
