@@ -215,6 +215,9 @@ select.camp-select:focus { outline: none; border-color: var(--accent); }
 
 .days-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; padding-bottom: 4px; }
 .dow-header-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 4px; }
+.week-goals { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); color: var(--text2); font-family: inherit; font-size: 11px; padding: 6px 9px; margin-bottom: 8px; resize: vertical; min-height: 30px; line-height: 1.4; }
+.week-goals:focus { outline: none; border-color: var(--accent); color: var(--text); }
+.week-goals::placeholder { color: var(--text3); }
 .dow-header { font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: var(--text3); text-align: center; padding: 2px 0; }
 .day-blank { border: 1px dashed var(--border); border-radius: var(--r); background: repeating-linear-gradient(45deg, transparent, transparent 6px, rgba(255,255,255,.012) 6px, rgba(255,255,255,.012) 12px); min-height: 80px; }
 
@@ -658,7 +661,7 @@ table.reg-table tbody tr:hover { background: var(--surface2); }
 <div class="tab-bar" id="tab-bar-plan">
   <div class="tab active" onclick="showTab('calendar')">Calendar</div>
   <div class="tab" onclick="showTab('principles')">ATT / DEF Principles</div>
-  <div class="tab" onclick="showTab('manage')">Manage Camps</div>
+  <div class="tab" onclick="showTab('manage')">Manage Planning</div>
 </div>
 
 <!-- REGISTER TABS -->
@@ -970,6 +973,17 @@ table.reg-table tbody tr:hover { background: var(--surface2); }
         <div class="form-field">
           <label id="c-comp-label">Competition / Tournament</label>
           <input type="text" id="c-competition" placeholder="e.g. AFC U23 Asian Cup 2026">
+        </div>
+      </div>
+      <div class="form-field">
+        <label>Team / National Team Logo (optional)</label>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div id="c-logo-preview" style="width:52px;height:52px;border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--surface2);overflow:hidden;flex-shrink:0">
+            <span style="font-size:9px;color:var(--text3)">No logo</span>
+          </div>
+          <input type="file" id="c-logo-file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="onLogoSelected(event)">
+          <button type="button" class="btn" onclick="document.getElementById('c-logo-file').click()">Upload logo</button>
+          <button type="button" class="btn" id="c-logo-remove" style="display:none" onclick="clearLogo()">Remove</button>
         </div>
       </div>
       <div id="camp-error" style="display:none;color:#ff7070;font-size:12px;padding:4px 0"></div>
@@ -1458,6 +1472,43 @@ function getCampDate(prefix) {
 }
 
 let _campType = 'camp';
+let _campLogo = null;   // base64 data URL of the logo being edited
+
+function setLogoPreview(dataUrl) {
+  _campLogo = dataUrl || null;
+  const box = document.getElementById('c-logo-preview');
+  const rm = document.getElementById('c-logo-remove');
+  if (dataUrl) {
+    box.innerHTML = `<img src="${dataUrl}" style="max-width:100%;max-height:100%;object-fit:contain">`;
+    rm.style.display = '';
+  } else {
+    box.innerHTML = `<span style="font-size:9px;color:var(--text3)">No logo</span>`;
+    rm.style.display = 'none';
+  }
+}
+function clearLogo() { setLogoPreview(null); document.getElementById('c-logo-file').value = ''; }
+
+function onLogoSelected(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      // downscale to max 256px so it stays small in storage / sync
+      const max = 256;
+      let w = img.width, h = img.height;
+      if (w > h && w > max) { h = Math.round(h * max / w); w = max; }
+      else if (h > max) { w = Math.round(w * max / h); h = max; }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      setLogoPreview(canvas.toDataURL('image/png'));
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
 function setCampType(t) {
   _campType = t;
   document.getElementById('ct-camp').classList.toggle('active', t==='camp');
@@ -1488,6 +1539,8 @@ function openNewCampModal() {
   document.getElementById('btn-delete-camp').style.display = 'none';
   document.getElementById('c-type-wrap').style.display = '';
   document.querySelector('#camp-modal .btn.primary').textContent = 'Create';
+  document.getElementById('c-logo-file').value = '';
+  setLogoPreview(null);
   setCampType('camp');
   openModal('camp-modal');
 }
@@ -1511,6 +1564,8 @@ function openEditCampModal(campId) {
   document.getElementById('c-end-wrap').style.display = (_campType==='season') ? 'none' : '';
   document.getElementById('c-weeks-wrap').style.display = 'none';
   document.querySelector('#camp-modal .btn.primary').textContent = 'Save Changes';
+  document.getElementById('c-logo-file').value = '';
+  setLogoPreview(camp.logo || null);
   openModal('camp-modal');
 }
 
@@ -1557,6 +1612,10 @@ function saveCamp() {
     state.activeCampId = camp.id;
     camp.days = buildDaysForCamp(camp);
   }
+
+  // persist logo on whichever camp we just created/edited
+  const _savedCamp = _editingCampId ? state.camps.find(c => c.id === _editingCampId) : state.camps[state.camps.length-1];
+  if (_savedCamp) _savedCamp.logo = _campLogo || null;
 
   errEl.style.display = 'none';
   saveState();
@@ -2077,6 +2136,7 @@ function renderCalendar() {
   const _wsdOpts = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
     .map((n,i)=>`<option value="${i}"${i===_wsdNow?' selected':''}>${n}</option>`).join('');
   metaArea.innerHTML = `<div class="camp-meta">
+    ${camp.logo ? `<img src="${camp.logo}" style="width:40px;height:40px;object-fit:contain;border-radius:6px;background:var(--surface2);padding:2px">` : ''}
     <div class="meta-field"><label>${camp.type==='season'?'Season':'Camp'}</label><div style="font-weight:600;font-size:13px">${camp.name}</div></div>
     <div class="meta-field"><label>Period</label><div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text2)">${fmtDate(camp.startDate)} → ${fmtDate(camp.endDate)}</div></div>
     ${camp.competition ? `<div class="meta-field"><label>${camp.type==='season'?'Club':'Competition'}</label><div style="font-size:12px;color:var(--text2)">${camp.competition}</div></div>` : ''}
@@ -2088,19 +2148,21 @@ function renderCalendar() {
     </div>
   </div>`;
 
-  // Goals section
+  // Goals section (label adapts to plan type)
+  const isSeason = camp.type === 'season';
   const goalsArea = document.getElementById('camp-goals-area');
   goalsArea.innerHTML = `<div class="goals-section">
     <div class="goals-header">
-      <div class="goals-label">Camp Goals / Purpose</div>
+      <div class="goals-label">${isSeason ? 'Season Goals / Purpose' : 'Camp Goals / Purpose'}</div>
     </div>
     <textarea class="goals-textarea" id="goals-input"
-      placeholder="Describe the objectives, tactical focus and purpose of this camp…"
+      placeholder="Describe the overall objectives, tactical focus and purpose of this ${isSeason ? 'season' : 'camp'}…"
       oninput="updateGoals(this.value)">${camp.goals || ''}</textarea>
   </div>`;
 
-  // show view switch, sync buttons
+  // show view switch, sync buttons; summary label adapts to plan type
   document.getElementById('plan-view-switch').style.display = '';
+  document.getElementById('pv-camp').textContent = isSeason ? 'SEASON SUMMARY' : 'CAMP SUMMARY';
   ['week','camp','month'].forEach(v=>document.getElementById('pv-'+v).classList.toggle('active', planView===v));
 
   // CAMP SUMMARY and MONTH views are rendered separately
@@ -2141,11 +2203,15 @@ function renderCalendar() {
     const realDays = wk.filter(Boolean);
     const wStart = fmtDate(realDays[0].date);
     const wEnd = fmtDate(realDays[realDays.length-1].date);
+    const wKey = realDays[0].date; // week identified by its first real day
+    const wGoal = (camp.weekGoals && camp.weekGoals[wKey]) || '';
     html += `<div class="week-block">
       <div class="week-header">
         <div class="week-label">Week ${wi+1}</div>
         <div class="week-dates">${wStart} — ${wEnd}</div>
       </div>
+      <textarea class="week-goals" placeholder="Goals / purpose for this week…"
+        oninput="updateWeekGoals('${camp.id}','${wKey}', this.value)">${wGoal}</textarea>
       <div class="dow-header-row">${dowOrder.map(dn=>`<div class="dow-header">${dn}</div>`).join('')}</div>
       <div class="days-row">`;
 
@@ -2325,6 +2391,14 @@ function updateGoals(val) {
   saveState();
 }
 
+function updateWeekGoals(campId, weekKey, val) {
+  const camp = state.camps.find(c => c.id === campId);
+  if (!camp) return;
+  if (!camp.weekGoals) camp.weekGoals = {};
+  camp.weekGoals[weekKey] = val;
+  saveState();   // no re-render: keeps the textarea focus while typing
+}
+
 // ═══════════════════════════════════════════
 //  PDF EXPORT
 // ═══════════════════════════════════════════
@@ -2414,147 +2488,159 @@ function exportReportsPDF() {
 function exportPDF() {
   if (state.activeArea === 'register') { exportReportsPDF(); return; }
   const camp = getActiveCamp();
-  if (!camp) { alert('Please select a camp first.'); return; }
+  if (!camp) { alert('Please select a plan first.'); return; }
 
   const gameDates = getGameDates(camp);
   const sessNums  = getSessionNumbers(camp);
   const days      = [...camp.days].sort((a,b) => a.date.localeCompare(b.date));
+  const isSeason  = camp.type === 'season';
 
   const PHYSIO_COLORS = {
-    'Duration':        '#2e9e4f',
-    'Tension':         '#3b82f6',
-    'Pre-Match':       '#f0a830',
-    'Max Specificity': '#11703a',
-    'Recovery':        '#7cc97c',
-    'Speed':           '#e6d020',
-    'Velocity':        '#e6d020',
+    'Duration':'#2e9e4f','Tension':'#3b82f6','Pre-Match':'#e0b84a','Max Specificity':'#11703a',
+    'Recovery':'#7cc97c','Speed':'#d9c41e','Velocity':'#d9c41e'
   };
+  const physioColor = p => PHYSIO_COLORS[p] || '#8a93a8';
+  const esc = s => (s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
-  function physioColor(p) { return PHYSIO_COLORS[p] || '#555'; }
-
-  function intensityDots(n) {
-    let s = '';
-    for (let i = 1; i <= 5; i++) {
-      s += `<span style="display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:2px;background:${i <= n ? physioColor('') : '#2a2a2a'};opacity:${i <= n ? 1 : 0.25}"></span>`;
-    }
-    return s;
+  let wsd = camp.weekStartDay;
+  if (wsd === undefined || wsd === null) {
+    const fp = days[0].date.split('-').map(Number);
+    wsd = new Date(Date.UTC(fp[0], fp[1]-1, fp[2])).getUTCDay();
   }
-
-  function intensityBar(n, color) {
-    const pct = n > 0 ? (n/5*100) : 0;
-    return `<div style="width:60px;height:5px;background:#222;border-radius:3px;display:inline-block;vertical-align:middle">
-      <div style="width:${pct}%;height:100%;background:${color};border-radius:3px"></div>
-    </div> <span style="font-size:9px;color:#888">${n > 0 ? n+'/5' : '—'}</span>`;
-  }
-
-  let rows = '';
-  const dayNums = sessNums;
-
+  const dowOf = ds => { const p = ds.split('-').map(Number); return new Date(Date.UTC(p[0],p[1]-1,p[2])).getUTCDay(); };
+  const colOf = ds => (dowOf(ds) - wsd + 7) % 7;
+  const weeks = []; let cur = null;
   days.forEach(day => {
-    const mdRef   = getMDRef(day.date, gameDates);
-    const _dpp = day.date.split('-').map(Number);
-    const dowStr  = DAYS[new Date(Date.UTC(_dpp[0],_dpp[1]-1,_dpp[2])).getUTCDay()];
-    const dateStr = fmtDate(day.date);
-    const nums    = dayNums[day.date] || [];
+    const c = colOf(day.date);
+    if (cur === null || (c === 0 && cur.some(x=>x))) { cur = [null,null,null,null,null,null,null]; weeks.push(cur); }
+    cur[c] = day;
+  });
+  const dowOrder = Array.from({length:7}, (_,i) => DAYS[(wsd + i) % 7]);
 
-    if (day.sessions.length === 0) {
-      rows += `<tr>
-        <td style="white-space:nowrap;font-weight:600">${dowStr}<br><span style="font-size:10px;font-weight:400;color:#888">${fmtDateShort(day.date)}</span></td>
-        <td style="color:#555;font-size:10px">${mdRef || '—'}</td>
-        <td colspan="5" style="color:#444;font-style:italic">—</td>
-      </tr>`;
-    } else {
-      day.sessions.forEach((sess, si) => {
-        const sesNum = nums[si];
-        const actLabel = (sess.activity === 'Training' && sesNum) ? 'Training ' + sesNum : sess.activity;
-        const col = physioColor(sess.physio);
-        const isFirst = si === 0;
-        rows += `<tr style="${si > 0 ? 'border-top:1px dashed #1e1e2e' : ''}">
-          ${isFirst ? `<td rowspan="${day.sessions.length}" style="white-space:nowrap;font-weight:600;vertical-align:top;padding-top:10px">${dowStr}<br><span style="font-size:10px;font-weight:400;color:#888">${fmtDateShort(day.date)}</span></td>
-          <td rowspan="${day.sessions.length}" style="color:#6b8fff;font-family:monospace;font-size:11px;vertical-align:top;padding-top:10px">${mdRef || '—'}</td>` : ''}
-          <td style="font-weight:600;font-size:11px">${actLabel}</td>
-          <td style="color:#aaa;font-size:10px">${sess.time || '—'}${sess.location ? '<br><span style="color:#666">'+sess.location+'</span>' : ''}</td>
-          <td style="font-size:10px;color:#ccc;max-width:220px">${sess.opponent ? '<em>vs '+sess.opponent+'</em><br>' : ''}${sess.content || '<span style="color:#444">—</span>'}</td>
-          <td style="white-space:nowrap">
-            ${sess.physio ? `<span style="background:${col}22;color:${col};padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600">${sess.physio}</span>` : '<span style="color:#444">—</span>'}
-          </td>
-          <td style="white-space:nowrap">${intensityBar(sess.intensity || 0, col)}</td>
-        </tr>`;
-      });
-    }
+  function unitsHTML(s) {
+    return sessionUnits(s).map(u => {
+      if (!u.content && !u.physio && !u.label) return '';
+      const col = u.physio ? physioColor(u.physio) : '#999';
+      return `<div style="border-left:3px solid ${col};padding-left:6px;margin-top:4px">
+        ${u.label ? `<div style="font-size:8px;font-weight:700;text-transform:uppercase;color:${col}">${esc(u.label)}</div>` : ''}
+        ${u.physio ? `<span style="font-size:8px;font-weight:700;text-transform:uppercase;color:${col}">${u.physio}${u.intensity?(' · L'+u.intensity):''}</span>` : ''}
+        ${u.content ? `<div style="font-size:9px;color:#333;line-height:1.35;white-space:pre-wrap;margin-top:1px">${esc(u.content)}</div>` : ''}
+      </div>`;
+    }).join('');
+  }
+
+  function footerHTML(day) {
+    const blocks = [];
+    day.sessions.forEach(s => {
+      if (s.activity==='Day Off' || s.activity==='Travel') return;
+      sessionUnits(s).forEach(u => { if (u.physio) blocks.push(u); });
+    });
+    if (!blocks.length) return '';
+    return `<div style="display:flex;gap:2px;margin-top:6px">` + blocks.map(u=>{
+      const col = physioColor(u.physio);
+      const h = u.intensity ? Math.round(u.intensity/5*16)+4 : 4;
+      return `<div style="flex:1;background:${col}1f;border-top:2px solid ${col};padding:3px 4px;border-radius:0 0 3px 3px">
+        <div style="font-size:7px;font-weight:700;text-transform:uppercase;color:${col};line-height:1.1">${u.physio}</div>
+        <div style="height:${h}px;background:${col};border-radius:2px;margin-top:2px"></div>
+      </div>`;
+    }).join('') + `</div>`;
+  }
+
+  let weeksHTML = '';
+  weeks.forEach((wk, wi) => {
+    const realDays = wk.filter(Boolean);
+    const wKey = realDays[0].date;
+    const wGoal = (camp.weekGoals && camp.weekGoals[wKey]) || '';
+    let cells = '';
+    wk.forEach(day => {
+      if (!day) { cells += `<td class="dcell blank"></td>`; return; }
+      const mdRef = getMDRef(day.date, gameDates);
+      const isGame = day.sessions.some(s=>s.activity==='Game');
+      const nums = sessNums[day.date] || [];
+      let body = '';
+      if (day.sessions.length === 0) {
+        body = `<div style="color:#bbb;font-style:italic;font-size:9px">—</div>`;
+      } else {
+        day.sessions.forEach((s,si)=>{
+          const sesNum = nums[si];
+          const lbl = (s.activity==='Training' && sesNum) ? 'Training '+sesNum : s.activity;
+          body += `<div style="margin-bottom:5px">
+            <div style="font-weight:700;font-size:10px;color:#111">${lbl}</div>
+            ${s.time||s.location?`<div style="font-size:8px;color:#777">${s.time||''}${s.location?' · '+esc(s.location):''}</div>`:''}
+            ${s.opponent?`<div style="font-size:8px;font-style:italic;color:#555">vs ${esc(s.opponent)}</div>`:''}
+            ${unitsHTML(s)}
+          </div>`;
+        });
+      }
+      cells += `<td class="dcell${isGame?' game':''}">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+          <span style="font-size:9px;color:#888">${fmtDateShort(day.date)}</span>
+          ${mdRef?`<span style="font-size:8px;font-family:monospace;color:#1a5e8a;background:#e7f0f7;padding:0 4px;border-radius:3px">${mdRef}</span>`:''}
+        </div>
+        ${body}
+        ${footerHTML(day)}
+      </td>`;
+    });
+    weeksHTML += `<div class="weekblock">
+      <div class="weekhead">Week ${wi+1} <span style="color:#999;font-weight:400">· ${fmtDate(realDays[0].date)} — ${fmtDate(realDays[realDays.length-1].date)}</span></div>
+      ${wGoal ? `<div class="weekgoal"><b>Goals:</b> ${esc(wGoal)}</div>` : ''}
+      <table class="weekgrid">
+        <thead><tr>${dowOrder.map(dn=>`<th>${dn}</th>`).join('')}</tr></thead>
+        <tbody><tr>${cells}</tr></tbody>
+      </table>
+    </div>`;
   });
 
+  const legend = [['Duration','#2e9e4f'],['Tension','#3b82f6'],['Pre-Match','#e0b84a'],['Max Specificity','#11703a'],['Recovery','#7cc97c'],['Speed','#d9c41e']]
+    .map(([n,c])=>`<span style="display:inline-flex;align-items:center;gap:4px;margin-right:12px;font-size:9px;color:#555"><span style="width:9px;height:9px;border-radius:2px;background:${c};display:inline-block"></span>${n}</span>`).join('');
+
   const html = `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>${camp.name} — Content Distribution Plan</title>
+<html><head><meta charset="UTF-8"><title>${esc(camp.name)} — Coach Content Planner</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;600&family=DM+Mono:wght@400&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;600;700&family=DM+Mono:wght@400&display=swap');
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'DM Sans', sans-serif; background: #0b0d11; color: #dce1f0; font-size: 12px; padding: 32px; }
-  h1 { font-size: 28px; font-weight: 600; letter-spacing: 1px; margin-bottom: 4px; }
-  .sub { color: #7d87a8; font-size: 13px; margin-bottom: 24px; }
-  .meta-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 24px; }
-  .meta-box { background: #12151d; border: 1px solid #252c42; border-radius: 6px; padding: 12px 16px; }
-  .meta-box label { font-size: 9px; color: #46506e; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 4px; }
-  .meta-box .val { font-size: 13px; font-weight: 600; }
-  .goals-box { background: #12151d; border: 1px solid #252c42; border-radius: 6px; padding: 16px; margin-bottom: 24px; }
-  .goals-box label { font-size: 9px; color: #46506e; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 8px; }
-  .goals-box p { font-size: 12px; line-height: 1.7; color: #b0b8d0; white-space: pre-wrap; }
-  table { width: 100%; border-collapse: collapse; }
-  thead th { background: #12151d; color: #46506e; font-size: 9px; text-transform: uppercase; letter-spacing: 1px; padding: 8px 10px; text-align: left; border-bottom: 2px solid #252c42; }
-  tbody tr { border-bottom: 1px solid #1a1d2a; }
-  tbody tr:hover { background: #12151d; }
-  tbody td { padding: 8px 10px; vertical-align: middle; line-height: 1.4; }
-  .section-title { font-size: 10px; color: #46506e; text-transform: uppercase; letter-spacing: 1px; margin: 24px 0 10px; font-family: 'DM Mono', monospace; border-bottom: 1px solid #1a1d2a; padding-bottom: 6px; }
-  @media print {
-    body { background: white; color: #111; padding: 16px; }
-    .meta-box, .goals-box { background: #f5f5f5; border-color: #ddd; }
-    thead th { background: #eee; color: #555; }
-    tbody tr { border-bottom-color: #eee; }
-  }
-</style>
-</head>
+  body { font-family: 'DM Sans', sans-serif; background: #fff; color: #111; font-size: 12px; padding: 24px; }
+  .header { display: flex; align-items: center; gap: 18px; border-bottom: 3px solid #111; padding-bottom: 14px; margin-bottom: 6px; }
+  .header .logo { width: 64px; height: 64px; object-fit: contain; flex-shrink: 0; }
+  .header .logo-ph { width: 64px; flex-shrink: 0; }
+  .header .center { flex: 1; text-align: center; }
+  .header h1 { font-size: 24px; font-weight: 700; letter-spacing: .5px; }
+  .header .dates { font-size: 12px; color: #555; margin-top: 2px; font-family: 'DM Mono', monospace; }
+  .header .comp { font-size: 11px; color: #777; margin-top: 2px; }
+  .legend { margin: 10px 0 16px; }
+  .overall-goals { background: #f5f6f8; border: 1px solid #e2e5ea; border-radius: 6px; padding: 12px 14px; margin-bottom: 18px; }
+  .overall-goals label { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: #888; display: block; margin-bottom: 5px; }
+  .overall-goals p { font-size: 12px; line-height: 1.6; color: #333; white-space: pre-wrap; }
+  .weekblock { margin-bottom: 16px; page-break-inside: avoid; }
+  .weekhead { font-size: 13px; font-weight: 700; margin-bottom: 5px; }
+  .weekgoal { font-size: 10px; color: #444; background: #f5f6f8; border-radius: 4px; padding: 5px 8px; margin-bottom: 6px; }
+  .weekgrid { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .weekgrid th { font-size: 8px; text-transform: uppercase; letter-spacing: .5px; color: #999; text-align: center; padding: 3px 0; border-bottom: 1px solid #e2e5ea; }
+  .dcell { width: 14.28%; vertical-align: top; border: 1px solid #e8eaee; border-radius: 4px; padding: 5px 6px; }
+  .dcell.blank { background: repeating-linear-gradient(45deg,#fff,#fff 5px,#f3f4f6 5px,#f3f4f6 10px); border-style: dashed; }
+  .dcell.game { border-color: #11703a; background: #f2faf5; }
+  .foot { font-size: 9px; color: #999; font-family: 'DM Mono', monospace; margin-top: 18px; border-top: 1px solid #e2e5ea; padding-top: 8px; }
+  @media print { body { padding: 10px; } .weekblock { page-break-inside: avoid; } }
+</style></head>
 <body>
-  <h1>${camp.name}</h1>
-  <div class="sub">${camp.competition || 'QFA U23 National Team'} &nbsp;·&nbsp; Content Distribution Plan</div>
-
-  <div class="meta-grid">
-    <div class="meta-box"><label>Period</label><div class="val">${fmtDate(camp.startDate)} → ${fmtDate(camp.endDate)}</div></div>
-    <div class="meta-box"><label>Total Days</label><div class="val">${days.length} days</div></div>
-    <div class="meta-box"><label>Matches</label><div class="val">${gameDates.length} game${gameDates.length !== 1 ? 's' : ''}</div></div>
+  <div class="header">
+    ${camp.logo ? `<img class="logo" src="${camp.logo}">` : `<div class="logo-ph"></div>`}
+    <div class="center">
+      <h1>${esc(camp.name)}</h1>
+      <div class="dates">${fmtDate(camp.startDate)} → ${fmtDate(camp.endDate)}</div>
+      ${camp.competition ? `<div class="comp">${esc(camp.competition)}</div>` : ''}
+    </div>
+    <div class="logo-ph"></div>
   </div>
-
-  ${camp.goals ? `<div class="goals-box"><label>Camp Goals / Purpose</label><p>${camp.goals.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p></div>` : ''}
-
-  <div class="section-title">Day-by-Day Plan</div>
-  <table>
-    <thead>
-      <tr>
-        <th>Day</th>
-        <th>MD Ref</th>
-        <th>Activity</th>
-        <th>Time / Location</th>
-        <th>Tactical Content</th>
-        <th>Physio</th>
-        <th>Intensity</th>
-      </tr>
-    </thead>
-    <tbody>${rows}</tbody>
-  </table>
-
-  <div style="margin-top:32px;font-size:10px;color:#46506e;font-family:'DM Mono',monospace">
-    Generated ${new Date().toLocaleDateString()} &nbsp;·&nbsp; QFA U23 — Content Distribution Plan
-  </div>
-
-  <scr`+`ipt>window.onload = function(){ window.print(); }<\/scr`+`ipt>
-</body>
-</html>`;
+  <div class="legend">${legend}</div>
+  ${camp.goals ? `<div class="overall-goals"><label>${isSeason?'Season':'Camp'} Goals / Purpose</label><p>${esc(camp.goals)}</p></div>` : ''}
+  ${weeksHTML}
+  <div class="foot">Generated ${new Date().toLocaleDateString()} · Coach Content Planner</div>
+  <scr`+`ipt>window.onload=function(){ window.print(); }<\/scr`+`ipt>
+</body></html>`;
 
   const blob = new Blob([html], {type:'text/html'});
-  const url  = URL.createObjectURL(blob);
-  window.open(url, '_blank');
+  window.open(URL.createObjectURL(blob), '_blank');
 }
 
 // ═══════════════════════════════════════════
