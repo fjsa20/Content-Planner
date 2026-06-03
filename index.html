@@ -268,6 +268,7 @@ select.camp-select:focus { outline: none; border-color: var(--accent); }
   border-radius: var(--r); overflow: hidden;
   cursor: pointer; transition: border-color .15s;
   position: relative; min-width: 0;
+  display: flex; flex-direction: column;   /* footer pins to bottom */
 }
 .day-card:hover { border-color: var(--border2); transform: translateY(-1px); }
 .day-card.game    { border-color: #4a2080; }
@@ -288,7 +289,8 @@ select.camp-select:focus { outline: none; border-color: var(--accent); }
 }
 .card-md.game-md { background: #0d3a1e; color: var(--max-col); }
 
-.session-list { padding: 4px; display: flex; flex-direction: column; gap: 3px; }
+.session-list { padding: 4px; display: flex; flex-direction: column; gap: 3px; flex: 1 1 auto; }
+.physio-footer, .physio-footer-empty { margin-top: auto; }
 .session-chip {
   border-radius: 4px; padding: 5px 7px;
   position: relative; overflow: hidden;
@@ -962,6 +964,10 @@ table.reg-table tbody tr:hover { background: var(--surface2); }
           <input type="number" id="c-weeks" min="1" max="52" value="4">
         </div>
       </div>
+      <div class="form-field">
+        <label>Team Name</label>
+        <input type="text" id="c-team" placeholder="e.g. Qatar U23 National Team">
+      </div>
       <div class="form-row">
         <div class="form-field">
           <label>Week starts on</label>
@@ -1533,6 +1539,7 @@ function openNewCampModal() {
   setCampDate('c-start','');
   setCampDate('c-end','');
   document.getElementById('c-competition').value = '';
+  document.getElementById('c-team').value = '';
   document.getElementById('c-weeks').value = '4';
   document.getElementById('c-weekstart').value = '1';
   document.getElementById('camp-error').style.display = 'none';
@@ -1555,6 +1562,7 @@ function openEditCampModal(campId) {
   setCampDate('c-start', camp.startDate);
   setCampDate('c-end', camp.endDate);
   document.getElementById('c-competition').value = camp.competition || '';
+  document.getElementById('c-team').value = camp.team || '';
   document.getElementById('c-weekstart').value = (camp.weekStartDay!==undefined && camp.weekStartDay!==null) ? camp.weekStartDay : 1;
   document.getElementById('camp-error').style.display = 'none';
   document.getElementById('btn-delete-camp').style.display = '';
@@ -1572,6 +1580,7 @@ function openEditCampModal(campId) {
 function saveCamp() {
   const name = document.getElementById('c-name').value.trim();
   const competition = document.getElementById('c-competition').value.trim();
+  const team = document.getElementById('c-team').value.trim();
   const start = getCampDate('c-start');
   const weekStartDay = parseInt(document.getElementById('c-weekstart').value);
   const errEl = document.getElementById('camp-error');
@@ -1613,9 +1622,9 @@ function saveCamp() {
     camp.days = buildDaysForCamp(camp);
   }
 
-  // persist logo on whichever camp we just created/edited
+  // persist logo + team on whichever camp we just created/edited
   const _savedCamp = _editingCampId ? state.camps.find(c => c.id === _editingCampId) : state.camps[state.camps.length-1];
-  if (_savedCamp) _savedCamp.logo = _campLogo || null;
+  if (_savedCamp) { _savedCamp.logo = _campLogo || null; _savedCamp.team = team || ''; }
 
   errEl.style.display = 'none';
   saveState();
@@ -2138,6 +2147,7 @@ function renderCalendar() {
   metaArea.innerHTML = `<div class="camp-meta">
     ${camp.logo ? `<img src="${camp.logo}" style="width:40px;height:40px;object-fit:contain;border-radius:6px;background:var(--surface2);padding:2px">` : ''}
     <div class="meta-field"><label>${camp.type==='season'?'Season':'Camp'}</label><div style="font-weight:600;font-size:13px">${camp.name}</div></div>
+    ${camp.team ? `<div class="meta-field"><label>Team</label><div style="font-size:12px;color:var(--text2)">${camp.team}</div></div>` : ''}
     <div class="meta-field"><label>Period</label><div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text2)">${fmtDate(camp.startDate)} → ${fmtDate(camp.endDate)}</div></div>
     ${camp.competition ? `<div class="meta-field"><label>${camp.type==='season'?'Club':'Competition'}</label><div style="font-size:12px;color:var(--text2)">${camp.competition}</div></div>` : ''}
     <div class="meta-field"><label>Week starts on</label>
@@ -2524,7 +2534,7 @@ function exportPDF() {
       return `<div style="border-left:3px solid ${col};padding-left:6px;margin-top:4px">
         ${u.label ? `<div style="font-size:8px;font-weight:700;text-transform:uppercase;color:${col}">${esc(u.label)}</div>` : ''}
         ${u.physio ? `<span style="font-size:8px;font-weight:700;text-transform:uppercase;color:${col}">${u.physio}${u.intensity?(' · L'+u.intensity):''}</span>` : ''}
-        ${u.content ? `<div style="font-size:9px;color:#333;line-height:1.35;white-space:pre-wrap;margin-top:1px">${esc(u.content)}</div>` : ''}
+        ${u.content ? `<div style="font-size:9px;color:#1a1a1a;line-height:1.35;white-space:pre-wrap;margin-top:1px">${esc(u.content)}</div>` : ''}
       </div>`;
     }).join('');
   }
@@ -2536,10 +2546,10 @@ function exportPDF() {
       sessionUnits(s).forEach(u => { if (u.physio) blocks.push(u); });
     });
     if (!blocks.length) return '';
-    return `<div style="display:flex;gap:2px;margin-top:6px">` + blocks.map(u=>{
+    return `<div style="display:flex;gap:2px;margin-top:auto;padding-top:6px">` + blocks.map(u=>{
       const col = physioColor(u.physio);
       const h = u.intensity ? Math.round(u.intensity/5*16)+4 : 4;
-      return `<div style="flex:1;background:${col}1f;border-top:2px solid ${col};padding:3px 4px;border-radius:0 0 3px 3px">
+      return `<div style="flex:1;background:${col}2b;border-top:2px solid ${col};padding:3px 4px;border-radius:0 0 3px 3px">
         <div style="font-size:7px;font-weight:700;text-transform:uppercase;color:${col};line-height:1.1">${u.physio}</div>
         <div style="height:${h}px;background:${col};border-radius:2px;margin-top:2px"></div>
       </div>`;
@@ -2559,30 +2569,30 @@ function exportPDF() {
       const nums = sessNums[day.date] || [];
       let body = '';
       if (day.sessions.length === 0) {
-        body = `<div style="color:#bbb;font-style:italic;font-size:9px">—</div>`;
+        body = `<div style="color:#888;font-style:italic;font-size:9px">—</div>`;
       } else {
         day.sessions.forEach((s,si)=>{
           const sesNum = nums[si];
           const lbl = (s.activity==='Training' && sesNum) ? 'Training '+sesNum : s.activity;
           body += `<div style="margin-bottom:5px">
-            <div style="font-weight:700;font-size:10px;color:#111">${lbl}</div>
-            ${s.time||s.location?`<div style="font-size:8px;color:#777">${s.time||''}${s.location?' · '+esc(s.location):''}</div>`:''}
-            ${s.opponent?`<div style="font-size:8px;font-style:italic;color:#555">vs ${esc(s.opponent)}</div>`:''}
+            <div style="font-weight:700;font-size:10px;color:#000">${lbl}</div>
+            ${s.time||s.location?`<div style="font-size:8px;color:#555">${s.time||''}${s.location?' · '+esc(s.location):''}</div>`:''}
+            ${s.opponent?`<div style="font-size:8px;font-style:italic;color:#444">vs ${esc(s.opponent)}</div>`:''}
             ${unitsHTML(s)}
           </div>`;
         });
       }
-      cells += `<td class="dcell${isGame?' game':''}">
+      cells += `<td class="dcell${isGame?' game':''}"><div class="dcell-in">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
-          <span style="font-size:9px;color:#888">${fmtDateShort(day.date)}</span>
-          ${mdRef?`<span style="font-size:8px;font-family:monospace;color:#1a5e8a;background:#e7f0f7;padding:0 4px;border-radius:3px">${mdRef}</span>`:''}
+          <span style="font-size:9px;color:#333;font-weight:600">${fmtDateShort(day.date)}</span>
+          ${mdRef?`<span style="font-size:8px;font-family:monospace;color:#0c4a6e;background:#dbeafe;padding:0 4px;border-radius:3px">${mdRef}</span>`:''}
         </div>
         ${body}
         ${footerHTML(day)}
-      </td>`;
+      </div></td>`;
     });
     weeksHTML += `<div class="weekblock">
-      <div class="weekhead">Week ${wi+1} <span style="color:#999;font-weight:400">· ${fmtDate(realDays[0].date)} — ${fmtDate(realDays[realDays.length-1].date)}</span></div>
+      <div class="weekhead">Week ${wi+1} <span style="color:#555;font-weight:400">· ${fmtDate(realDays[0].date)} — ${fmtDate(realDays[realDays.length-1].date)}</span></div>
       ${wGoal ? `<div class="weekgoal"><b>Goals:</b> ${esc(wGoal)}</div>` : ''}
       <table class="weekgrid">
         <thead><tr>${dowOrder.map(dn=>`<th>${dn}</th>`).join('')}</tr></thead>
@@ -2591,48 +2601,41 @@ function exportPDF() {
     </div>`;
   });
 
-  const legend = [['Duration','#2e9e4f'],['Tension','#3b82f6'],['Pre-Match','#e0b84a'],['Max Specificity','#11703a'],['Recovery','#7cc97c'],['Speed','#d9c41e']]
-    .map(([n,c])=>`<span style="display:inline-flex;align-items:center;gap:4px;margin-right:12px;font-size:9px;color:#555"><span style="width:9px;height:9px;border-radius:2px;background:${c};display:inline-block"></span>${n}</span>`).join('');
-
   const html = `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>${esc(camp.name)} — Coach Content Planner</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;600;700&family=DM+Mono:wght@400&display=swap');
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'DM Sans', sans-serif; background: #fff; color: #111; font-size: 12px; padding: 24px; }
-  .header { display: flex; align-items: center; gap: 18px; border-bottom: 3px solid #111; padding-bottom: 14px; margin-bottom: 6px; }
-  .header .logo { width: 64px; height: 64px; object-fit: contain; flex-shrink: 0; }
-  .header .logo-ph { width: 64px; flex-shrink: 0; }
-  .header .center { flex: 1; text-align: center; }
+  .header { text-align: center; border-bottom: 3px solid #111; padding-bottom: 14px; margin-bottom: 16px; }
+  .header .logo { max-width: 90px; max-height: 90px; object-fit: contain; margin: 0 auto 8px; display: block; }
+  .header .team { font-size: 13px; font-weight: 700; color: #111; letter-spacing: .3px; margin-bottom: 6px; }
   .header h1 { font-size: 24px; font-weight: 700; letter-spacing: .5px; }
-  .header .dates { font-size: 12px; color: #555; margin-top: 2px; font-family: 'DM Mono', monospace; }
-  .header .comp { font-size: 11px; color: #777; margin-top: 2px; }
-  .legend { margin: 10px 0 16px; }
-  .overall-goals { background: #f5f6f8; border: 1px solid #e2e5ea; border-radius: 6px; padding: 12px 14px; margin-bottom: 18px; }
-  .overall-goals label { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: #888; display: block; margin-bottom: 5px; }
-  .overall-goals p { font-size: 12px; line-height: 1.6; color: #333; white-space: pre-wrap; }
-  .weekblock { margin-bottom: 16px; page-break-inside: avoid; }
-  .weekhead { font-size: 13px; font-weight: 700; margin-bottom: 5px; }
-  .weekgoal { font-size: 10px; color: #444; background: #f5f6f8; border-radius: 4px; padding: 5px 8px; margin-bottom: 6px; }
+  .header .dates { font-size: 12px; color: #333; margin-top: 3px; font-family: 'DM Mono', monospace; }
+  .header .comp { font-size: 11px; color: #555; margin-top: 2px; }
+  .overall-goals { background: #f0f2f5; border: 1px solid #c9ced6; border-radius: 6px; padding: 12px 14px; margin-bottom: 18px; }
+  .overall-goals label { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: #555; display: block; margin-bottom: 5px; }
+  .overall-goals p { font-size: 12px; line-height: 1.6; color: #1a1a1a; white-space: pre-wrap; }
+  .weekblock { margin-bottom: 18px; page-break-inside: avoid; }
+  .weekhead { font-size: 14px; font-weight: 700; margin-bottom: 5px; color: #000; }
+  .weekgoal { font-size: 10px; color: #1a1a1a; background: #f0f2f5; border: 1px solid #d5d9e0; border-radius: 4px; padding: 5px 8px; margin-bottom: 6px; }
   .weekgrid { width: 100%; border-collapse: collapse; table-layout: fixed; }
-  .weekgrid th { font-size: 8px; text-transform: uppercase; letter-spacing: .5px; color: #999; text-align: center; padding: 3px 0; border-bottom: 1px solid #e2e5ea; }
-  .dcell { width: 14.28%; vertical-align: top; border: 1px solid #e8eaee; border-radius: 4px; padding: 5px 6px; }
-  .dcell.blank { background: repeating-linear-gradient(45deg,#fff,#fff 5px,#f3f4f6 5px,#f3f4f6 10px); border-style: dashed; }
-  .dcell.game { border-color: #11703a; background: #f2faf5; }
-  .foot { font-size: 9px; color: #999; font-family: 'DM Mono', monospace; margin-top: 18px; border-top: 1px solid #e2e5ea; padding-top: 8px; }
+  .weekgrid th { font-size: 9px; text-transform: uppercase; letter-spacing: .5px; color: #333; font-weight: 700; text-align: center; padding: 4px 0; border-bottom: 2px solid #999; }
+  .dcell { width: 14.28%; border: 1px solid #b9bfca; border-radius: 4px; padding: 5px 6px; vertical-align: top; height: 1px; }
+  .dcell-in { display: flex; flex-direction: column; height: 100%; }
+  .dcell.blank { background: repeating-linear-gradient(45deg,#fff,#fff 5px,#eef0f3 5px,#eef0f3 10px); border-style: dashed; border-color: #cfd4dc; }
+  .dcell.game { border-color: #11703a; border-width: 2px; background: #eef8f1; }
+  .foot { font-size: 9px; color: #555; font-family: 'DM Mono', monospace; margin-top: 18px; border-top: 1px solid #c9ced6; padding-top: 8px; }
   @media print { body { padding: 10px; } .weekblock { page-break-inside: avoid; } }
 </style></head>
 <body>
   <div class="header">
-    ${camp.logo ? `<img class="logo" src="${camp.logo}">` : `<div class="logo-ph"></div>`}
-    <div class="center">
-      <h1>${esc(camp.name)}</h1>
-      <div class="dates">${fmtDate(camp.startDate)} → ${fmtDate(camp.endDate)}</div>
-      ${camp.competition ? `<div class="comp">${esc(camp.competition)}</div>` : ''}
-    </div>
-    <div class="logo-ph"></div>
+    ${camp.logo ? `<img class="logo" src="${camp.logo}">` : ''}
+    ${camp.team ? `<div class="team">${esc(camp.team)}</div>` : ''}
+    <h1>${esc(camp.name)}</h1>
+    <div class="dates">${fmtDate(camp.startDate)} → ${fmtDate(camp.endDate)}</div>
+    ${camp.competition ? `<div class="comp">${esc(camp.competition)}</div>` : ''}
   </div>
-  <div class="legend">${legend}</div>
   ${camp.goals ? `<div class="overall-goals"><label>${isSeason?'Season':'Camp'} Goals / Purpose</label><p>${esc(camp.goals)}</p></div>` : ''}
   ${weeksHTML}
   <div class="foot">Generated ${new Date().toLocaleDateString()} · Coach Content Planner</div>

@@ -1,6 +1,6 @@
 // QFA U23 CDP — Service Worker
 // Bump CACHE version when you deploy a new index.html so devices pick up the update.
-const CACHE = 'qfa-cdp-v5';
+const CACHE = 'qfa-cdp-v6';
 
 // App shell — cached on install so the app opens offline.
 const SHELL = [
