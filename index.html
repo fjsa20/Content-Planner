@@ -2530,11 +2530,10 @@ function exportPDF() {
   function unitsHTML(s) {
     return sessionUnits(s).map(u => {
       if (!u.content && !u.physio && !u.label) return '';
-      const col = u.physio ? physioColor(u.physio) : '#999';
+      const col = u.physio ? physioColor(u.physio) : '#bbb';
       return `<div style="border-left:3px solid ${col};padding-left:6px;margin-top:4px">
         ${u.label ? `<div style="font-size:8px;font-weight:700;text-transform:uppercase;color:${col}">${esc(u.label)}</div>` : ''}
-        ${u.physio ? `<span style="font-size:8px;font-weight:700;text-transform:uppercase;color:${col}">${u.physio}${u.intensity?(' · L'+u.intensity):''}</span>` : ''}
-        ${u.content ? `<div style="font-size:9px;color:#1a1a1a;line-height:1.35;white-space:pre-wrap;margin-top:1px">${esc(u.content)}</div>` : ''}
+        ${u.content ? `<div style="font-size:9px;color:#1a1a1a;line-height:1.35;white-space:pre-wrap">${esc(u.content)}</div>` : ''}
       </div>`;
     }).join('');
   }
@@ -2545,15 +2544,21 @@ function exportPDF() {
       if (s.activity==='Day Off' || s.activity==='Travel') return;
       sessionUnits(s).forEach(u => { if (u.physio) blocks.push(u); });
     });
-    if (!blocks.length) return '';
-    return `<div style="display:flex;gap:2px;margin-top:auto;padding-top:6px">` + blocks.map(u=>{
+    // fixed-height footer band so all days align on the same baseline
+    const BAND = 34;        // total band height (px)
+    const MAXBAR = 24;      // tallest bar (level 5)
+    if (!blocks.length) {
+      return `<div style="margin-top:auto;height:${BAND}px;border-top:1px solid #d5d9e0"></div>`;
+    }
+    const bars = blocks.map(u=>{
       const col = physioColor(u.physio);
-      const h = u.intensity ? Math.round(u.intensity/5*16)+4 : 4;
-      return `<div style="flex:1;background:${col}2b;border-top:2px solid ${col};padding:3px 4px;border-radius:0 0 3px 3px">
-        <div style="font-size:7px;font-weight:700;text-transform:uppercase;color:${col};line-height:1.1">${u.physio}</div>
-        <div style="height:${h}px;background:${col};border-radius:2px;margin-top:2px"></div>
+      const h = u.intensity ? Math.round(u.intensity/5*MAXBAR) : 3;
+      return `<div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch">
+        <div style="font-size:6.5px;font-weight:700;text-transform:uppercase;color:${col};line-height:1;margin-bottom:2px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.physio}</div>
+        <div style="height:${h}px;background:${col};border-radius:2px 2px 0 0"></div>
       </div>`;
-    }).join('') + `</div>`;
+    }).join('');
+    return `<div style="margin-top:auto;display:flex;gap:3px;align-items:flex-end;height:${BAND}px;border-top:1px solid #d5d9e0;padding-top:3px">${bars}</div>`;
   }
 
   let weeksHTML = '';
