@@ -224,8 +224,15 @@ select.camp-select:focus { outline: none; border-color: var(--accent); }
 /* ── PHYSIO DOMINANCE FOOTER ── */
 .physio-footer {
   display: flex;
+  gap: 7px;                    /* gap BETWEEN different training sessions */
   border-top: 1px solid var(--border);
   min-height: 44px;
+  padding: 0 2px;
+}
+.physio-footer-sess {
+  display: flex;
+  flex: 1;
+  gap: 0;                      /* groups of the SAME session are joined */
 }
 .physio-footer-empty {
   min-height: 44px;
@@ -521,7 +528,10 @@ select.camp-select:focus { outline: none; border-color: var(--accent); }
 .mvf-title { font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 1.5px; margin-bottom: 8px; }
 .mvf-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
 .mvf-dow { font-size: 9px; text-transform: uppercase; letter-spacing: .5px; color: var(--text3); text-align: center; padding: 4px 0; }
-.mvf-cell { min-height: 92px; background: var(--surface); border: 1px solid var(--border); border-radius: 5px; padding: 5px 6px; cursor: pointer; transition: border-color .15s; overflow: hidden; }
+.mvf-cell { min-height: 92px; background: var(--surface); border: 1px solid var(--border); border-radius: 5px; padding: 5px 6px; cursor: pointer; transition: border-color .15s; overflow: hidden; position: relative; padding-bottom: 22px; }
+.mvf-bars { position: absolute; right: 5px; bottom: 4px; display: flex; gap: 4px; align-items: flex-end; height: 17px; }
+.mvf-bars-sess { display: flex; gap: 1px; align-items: flex-end; }
+.mvf-bar { width: 5px; border-radius: 1px 1px 0 0; min-height: 3px; }
 .mvf-cell:hover { border-color: var(--accent); }
 .mvf-empty { background: transparent; border: none; cursor: default; }
 .mvf-out { opacity: .35; cursor: default; }
@@ -642,19 +652,19 @@ table.reg-table tbody tr:hover { background: var(--surface2); }
   </div>
   <div class="header-sep"></div>
   <div class="camp-selector-wrap" id="camp-selector-wrap">
-    <label>CAMP</label>
+    <label>TEAM PLAN</label>
     <select class="camp-select" id="camp-select" onchange="switchCamp(this.value)">
-      <option value="">— Select camp —</option>
+      <option value="">— Select plan —</option>
     </select>
   </div>
   <div class="header-right">
     <span class="save-indicator" id="save-indicator">●  saved</span>
     <span class="sync-indicator" id="sync-indicator" onclick="openSyncModal()" title="Cloud sync status">☁ Local only</span>
+    <button class="btn" onclick="openSyncModal()" title="Set up sync across your devices">☁ Sync</button>
     <button class="btn" id="hdr-new-camp" onclick="openNewCampModal()">+ New Plan</button>
     <button class="btn" onclick="exportData()" title="Save all your data to a file you keep">↓ Backup</button>
     <button class="btn" onclick="document.getElementById('import-input').click()" title="Load data from a backup file">↑ Restore</button>
     <input type="file" id="import-input" accept=".json" style="display:none" onchange="importData(event)">
-    <button class="btn" onclick="openSyncModal()" title="Set up sync across your devices">☁ Sync</button>
     <button class="btn primary" id="hdr-export-pdf" onclick="exportPDF()">↓ Export PDF</button>
   </div>
 </header>
@@ -1013,11 +1023,11 @@ table.reg-table tbody tr:hover { background: var(--surface2); }
       <div class="form-row">
         <div class="form-field">
           <label>Season</label>
-          <select id="e-season"></select>
+          <select id="e-season" onchange="onExSeasonChange()"></select>
         </div>
         <div class="form-field">
           <label>Team</label>
-          <input type="text" id="e-club" placeholder="e.g. QFA U23" list="dl-clubs">
+          <input type="text" id="e-club" placeholder="pick or type" list="dl-clubs">
           <datalist id="dl-clubs"></datalist>
         </div>
         <div class="form-field">
@@ -1036,7 +1046,7 @@ table.reg-table tbody tr:hover { background: var(--surface2); }
           <input type="text" id="e-ut" placeholder="e.g. UT1">
         </div>
         <div class="form-field">
-          <label>Microcycle</label>
+          <label>Microcycle / Week</label>
           <input type="text" id="e-micro" placeholder="e.g. 1">
         </div>
       </div>
@@ -1046,7 +1056,7 @@ table.reg-table tbody tr:hover { background: var(--surface2); }
           <select id="e-md"></select>
         </div>
         <div class="form-field">
-          <label>Day Type</label>
+          <label>Physiological Dominance</label>
           <select id="e-regime"></select>
         </div>
         <div class="form-field">
@@ -1126,7 +1136,7 @@ const DEFAULT_TAXONOMY = {
   contents: ['Offensive Organization','Defensive Organization','Offensive Transition','Defensive Transition','Set Pieces','All/Formal Game','Motor Preparation','Specific Motor Skills'],
   generalObjectives: ['Build-up','Creation','Finishing','Prevent Build-up','Prevent Creation','Prevent Finishing','Decision after Recovery','Decision after Loss','Reaction','Offensive','Defensive','Tournament','Rondo','Joint Mobility','Coordination/Agility','Functional Strength','Core','Other'],
   specificObjectives: ['Inside Play','Outside Play','Possession Retention','Switch of Play','Finishing','Goal Kick','Pressing','Containment','Defensive Alignments','Fast Counter-attack','Reaction to Loss','Corners','Free Kicks','Kick-off','Throw-ins'],
-  regimes: ['Recovery','Tension','Duration','Speed','Activation','Game','Friendly'],
+  regimes: ['Duration','Tension','Pre-Match','Max Specificity','Recovery','Speed'],
   scales: ['Individual','Group','Sectorial','Intersectorial'],
   priorities: ['Main','Secondary'],
   // hierarchy: content -> { generalObjective: [specificObjectives] }
@@ -1257,6 +1267,14 @@ function loadState() {
   if (!state.taxonomy.hierarchy) state.taxonomy.hierarchy = JSON.parse(JSON.stringify(DEFAULT_TAXONOMY.hierarchy));
   if (!state.activeArea) state.activeArea = 'plan';
   if (!state.principles) state.principles = { att: [], def: [] };
+  // Migration: "Day Type" → "Physiological Dominance" values.
+  // If the saved regimes still contain the old morphocycle items, replace with the physio set.
+  if (state.taxonomy && Array.isArray(state.taxonomy.regimes)) {
+    const oldSet = ['Activation','Game','Friendly'];
+    const looksOld = state.taxonomy.regimes.some(r => oldSet.includes(r))
+      || !state.taxonomy.regimes.includes('Max Specificity');
+    if (looksOld) state.taxonomy.regimes = ['Duration','Tension','Pre-Match','Max Specificity','Recovery','Speed'];
+  }
 }
 
 function exportData() {
@@ -1379,6 +1397,19 @@ function sessionUnits(s) {
     label: g.label || '', content: g.content || '', physio: g.physio || '', intensity: g.intensity || 0
   }));
   return [{ label:'', content: s.content || '', physio: s.physio || '', intensity: s.intensity || 0 }];
+}
+
+// Sort a day's sessions by time ascending (earliest first). Sessions without a
+// time keep their relative order and go last. Returns a new sorted array.
+function sortedSessions(sessions) {
+  const toMin = t => {
+    if (!t || !/^\d{1,2}:\d{2}/.test(t)) return 1e9; // no/invalid time → last
+    const [h,m] = t.split(':').map(Number); return h*60 + m;
+  };
+  return sessions.map((s,i)=>({s,i})).sort((a,b)=>{
+    const d = toMin(a.s.time) - toMin(b.s.time);
+    return d !== 0 ? d : a.i - b.i;
+  }).map(x=>x.s);
 }
 
 // Sequential session counter across camp
@@ -1831,6 +1862,7 @@ function saveSession() {
   } else {
     day.sessions.push(sess);
   }
+  day.sessions = sortedSessions(day.sessions);
 
   saveState(); closeModal('session-modal'); renderCalendar(); renderChart();
 }
@@ -2038,7 +2070,7 @@ function renderCampSummary(camp) {
 
 function planPhysioColor(p) {
   const map = {
-    'Duration':'#2e9e4f','Tension':'#3b82f6','Pre-Match':'#f0a830','Max Specificity':'#11703a',
+    'Duration':'#2e9e4f','Tension':'#3b82f6','Pre-Match':'#ece49a','Max Specificity':'#11703a',
     'Recovery':'#7cc97c','Speed':'#e6d020','Velocity':'#e6d020',
     'Day Off':'#e8eaf2','Travel':'#e07b1a','Other':'#aab2c5','Others':'#aab2c5'
   };
@@ -2088,19 +2120,34 @@ function renderMonthView(camp) {
         inner += `<div class="mvf-sess">
           <div class="mvf-sess-head">${label}${s.time?` · ${s.time}`:''}${s.location?` · ${s.location}`:''}</div>`;
         sessionUnits(s).forEach(u=>{
-          if (!u.content && !u.physio && !u.label) return;
+          if (!u.content && !u.label) return;
           const col = u.physio ? planPhysioColor(u.physio) : 'var(--text3)';
           inner += `<div class="mvf-unit" style="border-left:2px solid ${col}">
             ${u.label?`<span class="mvf-glab" style="color:${col}">${u.label}: </span>`:''}
-            ${u.physio?`<span class="mvf-phys" style="color:${col}">${u.physio}${u.intensity?(' L'+u.intensity):''}</span>`:''}
             ${u.content?`<div class="mvf-cont">${u.content}</div>`:''}
           </div>`;
         });
         inner += `</div>`;
       });
+      // small physio bars, bottom-right; grouped per session (joined within, gap between)
+      const barGroups = d.sessions
+        .filter(x => x.activity!=='Day Off' && x.activity!=='Travel')
+        .map(x => sessionUnits(x).filter(u=>u.physio))
+        .filter(g => g.length>0);
+      let cornerBars = '';
+      if (barGroups.length) {
+        cornerBars = `<div class="mvf-bars">` + barGroups.map(g =>
+          `<div class="mvf-bars-sess">` + g.map(u=>{
+            const col = planPhysioColor(u.physio);
+            const h = u.intensity ? Math.round(u.intensity/5*14)+3 : 3;
+            return `<div class="mvf-bar" title="${u.physio}${u.intensity?(' L'+u.intensity):''}" style="height:${h}px;background:${col}"></div>`;
+          }).join('') + `</div>`
+        ).join('') + `</div>`;
+      }
       cells += `<div class="mvf-cell${isGame?' mvf-game':''}" onclick="openDayQuick('${dateStr}')">
         <div class="mvf-num">${dnum}${md?` <span class="mvf-md">${md}</span>`:''}</div>
         ${inner}
+        ${cornerBars}
       </div>`;
     }
     html += `<div class="mvf-month"><div class="mvf-title">${monthName}</div><div class="mvf-grid">${cells}</div></div>`;
@@ -2183,6 +2230,8 @@ function renderCalendar() {
   ensureChartHeader();
 
   const days = [...camp.days].sort((a,b) => a.date.localeCompare(b.date));
+  // keep each day's sessions ordered by time (earliest first)
+  camp.days.forEach(d => { d.sessions = sortedSessions(d.sessions); });
   const gameDates = getGameDates(camp);
   const sessNums = getSessionNumbers(camp);
 
@@ -2284,26 +2333,31 @@ function renderCalendar() {
         html += `<button class="btn-add-session" onclick="openAddSession('${day.date}')">+ session</button>`;
       }
 
-      // ── PHYSIOLOGICAL DOMINANCE FOOTER (one block per unit/group) ──
-      const footerUnits = [];
-      day.sessions.forEach(s => {
-        if (s.activity === 'Day Off' || s.activity === 'Travel') return;
-        sessionUnits(s).forEach(u => { if (u.physio) footerUnits.push(u); });
-      });
+      // ── PHYSIOLOGICAL DOMINANCE FOOTER ──
+      // Bars grouped per session: a split session's two bars are joined (touching);
+      // separate trainings are spaced apart by a gap.
+      const footerSessions = day.sessions
+        .filter(s => s.activity !== 'Day Off' && s.activity !== 'Travel')
+        .map(s => sessionUnits(s).filter(u => u.physio))
+        .filter(group => group.length > 0);
       html += `</div>`; // close session-list
 
-      if (footerUnits.length > 0) {
+      if (footerSessions.length > 0) {
         html += `<div class="physio-footer">`;
-        footerUnits.forEach(u => {
-          const col  = getPhysioBar(u.physio);
-          const intv = u.intensity || 0;
-          const barH = intv > 0 ? Math.round((intv / 5) * 18) : 4;
-          html += `<div class="physio-footer-block" style="flex:1;background:${col}22;border-top:2px solid ${col}">
-            <div class="physio-footer-label" style="color:${col}">${u.physio}</div>
-            <div class="physio-footer-bar-wrap">
-              <div class="physio-footer-bar" style="height:${barH}px;background:${col}"></div>
-            </div>
-          </div>`;
+        footerSessions.forEach(group => {
+          html += `<div class="physio-footer-sess">`;
+          group.forEach(u => {
+            const col  = getPhysioBar(u.physio);
+            const intv = u.intensity || 0;
+            const barH = intv > 0 ? Math.round((intv / 5) * 18) : 4;
+            html += `<div class="physio-footer-block" style="flex:1;background:${col}22;border-top:2px solid ${col}">
+              <div class="physio-footer-label" style="color:${col}">${u.physio}</div>
+              <div class="physio-footer-bar-wrap">
+                <div class="physio-footer-bar" style="height:${barH}px;background:${col}"></div>
+              </div>
+            </div>`;
+          });
+          html += `</div>`;
         });
         html += `</div>`;
       } else {
@@ -2539,26 +2593,28 @@ function exportPDF() {
   }
 
   function footerHTML(day) {
-    const blocks = [];
-    day.sessions.forEach(s => {
-      if (s.activity==='Day Off' || s.activity==='Travel') return;
-      sessionUnits(s).forEach(u => { if (u.physio) blocks.push(u); });
-    });
-    // fixed-height footer band so all days align on the same baseline
+    const groups = day.sessions
+      .filter(s => s.activity!=='Day Off' && s.activity!=='Travel')
+      .map(s => sessionUnits(s).filter(u => u.physio))
+      .filter(g => g.length > 0);
     const BAND = 34;        // total band height (px)
     const MAXBAR = 24;      // tallest bar (level 5)
-    if (!blocks.length) {
+    if (!groups.length) {
       return `<div style="margin-top:auto;height:${BAND}px;border-top:1px solid #d5d9e0"></div>`;
     }
-    const bars = blocks.map(u=>{
-      const col = physioColor(u.physio);
-      const h = u.intensity ? Math.round(u.intensity/5*MAXBAR) : 3;
-      return `<div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch">
-        <div style="font-size:6.5px;font-weight:700;text-transform:uppercase;color:${col};line-height:1;margin-bottom:2px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.physio}</div>
-        <div style="height:${h}px;background:${col};border-radius:2px 2px 0 0"></div>
-      </div>`;
+    const sessHTML = groups.map(group => {
+      const bars = group.map(u=>{
+        const col = physioColor(u.physio);
+        const h = u.intensity ? Math.round(u.intensity/5*MAXBAR) : 3;
+        return `<div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch">
+          <div style="font-size:6.5px;font-weight:700;text-transform:uppercase;color:${col};line-height:1;margin-bottom:2px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.physio}</div>
+          <div style="height:${h}px;background:${col};border-radius:2px 2px 0 0"></div>
+        </div>`;
+      }).join('');
+      // groups of the same session are joined (gap:0); flex weight = number of bars
+      return `<div style="flex:${group.length};display:flex;gap:0;align-items:flex-end">${bars}</div>`;
     }).join('');
-    return `<div style="margin-top:auto;display:flex;gap:3px;align-items:flex-end;height:${BAND}px;border-top:1px solid #d5d9e0;padding-top:3px">${bars}</div>`;
+    return `<div style="margin-top:auto;display:flex;gap:7px;align-items:flex-end;height:${BAND}px;border-top:1px solid #d5d9e0;padding-top:3px">${sessHTML}</div>`;
   }
 
   let weeksHTML = '';
@@ -2677,7 +2733,7 @@ function dayCellContent(exs) {
   return `
     <div class="pvc-head">
       ${md?`<span class="pvc-md">${md}</span>`:''}
-      ${dayType?`<span class="pvc-dt">${dayType}</span>`:''}
+      ${dayType?`<span class="pvc-dt" style="background:${planPhysioColor(dayType)}22;color:${planPhysioColor(dayType)}">${dayType}</span>`:''}
       <span class="pvc-total">${total}'</span>
     </div>
     <div class="pvc-chips">${chips}</div>`;
@@ -2847,7 +2903,7 @@ function exportPlanViewPDF() {
     const md = exs.find(e=>e.md)?.md || '';
     const dt = exs.find(e=>e.regime)?.regime || '';
     const chips = Object.entries(byC).map(([c,v])=>`<div style="font-size:8px;background:${contentColor(c)}22;color:${contentColor(c)};border-radius:3px;padding:1px 3px;margin-bottom:1px">${c} ${v}'</div>`).join('');
-    return `<div style="font-size:8px;color:#888">${md} ${dt}</div>${chips}`;
+    return `<div style="font-size:8px;color:#888">${md} ${dt?`<span style="color:${planPhysioColor(dt)};font-weight:700">${dt}</span>`:''}</div>${chips}`;
   }
   function monthBlock(y,m){
     const first=new Date(y,m,1),sd=first.getDay(),dim=new Date(y,m+1,0).getDate();
@@ -2893,7 +2949,7 @@ const TAX_LISTS = [
   { key: 'contents',           title: 'Content',             note: 'Macro tactical / physical categories.' },
   { key: 'generalObjectives',  title: 'General Objective',   note: 'Mid-level objectives within a content.' },
   { key: 'specificObjectives', title: 'Specific Objective',  note: 'Most granular objective.' },
-  { key: 'regimes',            title: 'Day Type',            note: 'Day type within the morphocycle (Recovery, Tension, Duration…).' },
+  { key: 'regimes',            title: 'Physiological Dominance', note: 'Physiological dominance (Duration, Tension, Pre-Match, Max Specificity, Recovery, Speed).' },
   { key: 'scales',             title: 'Scale',               note: 'Organisational scale of the exercise.' },
   { key: 'priorities',         title: 'Priority',            note: 'Main vs secondary objective.' },
 ];
@@ -2912,14 +2968,9 @@ function openExerciseModal(id) {
   const t = state.taxonomy;
   _editExerciseId = id || null;
 
-  // Datalists
-  const clubs = [...new Set(state.exercises.map(e=>e.club).filter(Boolean))];
-  document.getElementById('dl-clubs').innerHTML = clubs.map(s=>`<option value="${s}">`).join('');
-  document.getElementById('dl-camps').innerHTML = state.camps.map(c=>`<option value="${c.name}">`).join('');
-
   fillSelect(document.getElementById('e-season'), SEASONS, currentSeason(), undefined);
   fillSelect(document.getElementById('e-md'), MD_OPTIONS, '', '— MD —');
-  fillSelect(document.getElementById('e-regime'), t.regimes, '', '— Day Type —');
+  fillSelect(document.getElementById('e-regime'), t.regimes, '', '— Physiological Dominance —');
   fillSelect(document.getElementById('e-priority'), t.priorities, 'Main', undefined);
   fillSelect(document.getElementById('e-content'), t.contents, '', '— Content —');
   fillSelect(document.getElementById('e-objgeral'), [], '', '— General —');
@@ -2930,6 +2981,7 @@ function openExerciseModal(id) {
     const e = state.exercises.find(x => x.id === id);
     document.getElementById('exercise-modal-title').textContent = 'Edit Exercise';
     document.getElementById('e-season').value = e.season || currentSeason();
+    refreshExerciseDatalists(e.season || '');
     document.getElementById('e-club').value = e.club || '';
     document.getElementById('e-camp').value = e.campName || '';
     document.getElementById('e-date').value = e.date || '';
@@ -2955,11 +3007,52 @@ function openExerciseModal(id) {
     // keep season/team/camp from last entry for speed
     const last = state.exercises[state.exercises.length-1];
     document.getElementById('e-season').value = last ? (last.season||currentSeason()) : currentSeason();
+    refreshExerciseDatalists(document.getElementById('e-season').value);
     document.getElementById('e-club').value = last ? (last.club||'') : '';
     document.getElementById('e-camp').value = last ? (last.campName||'') : '';
     document.getElementById('btn-delete-exercise').style.display = 'none';
   }
   openModal('exercise-modal');
+}
+
+// Populate Team and Camp datalists. When a season is given, only show teams/camps
+// linked to exercises in that season (so the options cascade from the season).
+// Team names also include the teams defined on existing Plans.
+function refreshExerciseDatalists(season) {
+  const exs = season ? state.exercises.filter(e => e.season === season) : state.exercises;
+
+  // Teams: from plans' team field + any teams used in (season-filtered) exercises
+  const planTeams = state.camps.map(c => c.team).filter(Boolean);
+  const exTeams   = exs.map(e => e.club).filter(Boolean);
+  const teams = [...new Set([...planTeams, ...exTeams])].sort();
+  document.getElementById('dl-clubs').innerHTML = teams.map(s=>`<option value="${s}">`).join('');
+
+  // Camps: plans whose season matches (by date range) + camps used in season-filtered exercises
+  let campNames;
+  if (season) {
+    const used = new Set(exs.map(e => e.campName).filter(Boolean));
+    state.camps.forEach(c => { if (campSeason(c) === season) used.add(c.name); });
+    campNames = [...used];
+  } else {
+    campNames = state.camps.map(c => c.name);
+  }
+  document.getElementById('dl-camps').innerHTML = campNames.map(n=>`<option value="${n}">`).join('');
+}
+
+// Derive a plan's season label from its start date (e.g. 2026/27)
+function campSeason(c) {
+  if (!c.startDate) return '';
+  const [y,m] = c.startDate.split('-').map(Number);
+  const startYear = m >= 7 ? y : y - 1;   // season starts in July
+  return `${startYear}/${String(startYear+1).slice(-2)}`;
+}
+
+// Called when the Season dropdown changes in the exercise modal
+function onExSeasonChange() {
+  refreshExerciseDatalists(document.getElementById('e-season').value);
+  // clear team/camp so the user re-picks from the cascaded list
+  document.getElementById('e-club').value = '';
+  document.getElementById('e-camp').value = '';
 }
 
 // When the camp field changes, prefill season from camp dates and try to suggest MD
@@ -3086,7 +3179,7 @@ function buildFilterBar(targetId) {
       <option value="">All</option>${opt(MD_OPTIONS, regFilters.md)}</select></div>
     <div class="reg-filter"><label>Training (UT)</label><select onchange="setFilter('ut',this.value)">
       <option value="">All</option>${opt(uts, regFilters.ut)}</select></div>
-    <div class="reg-filter"><label>Day Type</label><select onchange="setFilter('regime',this.value)">
+    <div class="reg-filter"><label>Physio Dominance</label><select onchange="setFilter('regime',this.value)">
       <option value="">All</option>${opt(state.taxonomy.regimes, regFilters.regime)}</select></div>
     <div class="reg-filter"><label>Content</label><select onchange="setFilter('content',this.value)">
       <option value="">All</option>${opt(state.taxonomy.contents, regFilters.content)}</select></div>
@@ -3157,7 +3250,7 @@ function renderDatabase() {
   wrap.innerHTML = `<table class="reg-table">
     <thead><tr>
       <th>Date</th><th>Season</th><th>Team</th><th>Camp</th><th>UT</th><th>Micro</th>
-      <th>MD</th><th>Day Type</th><th>Exercise</th><th>Content</th><th>General Obj.</th><th>Specific Obj.</th>
+      <th>MD</th><th>Physio</th><th>Exercise</th><th>Content</th><th>General Obj.</th><th>Specific Obj.</th>
       <th>Scale</th><th style="text-align:right">Min</th><th>Links</th>
     </tr></thead><tbody>
     ${rows.map(e=>`<tr onclick="openExerciseModal('${e.id}')">
@@ -3168,7 +3261,7 @@ function renderDatabase() {
       <td>${e.ut||'—'}</td>
       <td style="text-align:center">${e.micro||'—'}</td>
       <td style="white-space:nowrap">${e.md?`<span class="tag" style="background:var(--accent-dim);color:var(--accent2)">${e.md}</span>`:'—'}</td>
-      <td>${e.regime?`<span class="tag" style="background:#2a2f45;color:var(--text2)">${e.regime}</span>`:'—'}</td>
+      <td>${e.regime?`<span class="tag" style="background:${planPhysioColor(e.regime)}22;color:${planPhysioColor(e.regime)}">${e.regime}</span>`:'—'}</td>
       <td>${e.exercise||'—'}</td>
       <td><span class="tag" style="background:${contentColor(e.content)}22;color:${contentColor(e.content)}">${e.content}</span></td>
       <td>${e.objGeral||'—'}</td>
@@ -3331,13 +3424,13 @@ function renderReports() {
   // 3. Time by Specific Objective
   html += renderBarReport('Time by Specific Objective', 'Within the filtered scope', aggregateBy(recs, e=>e.objEspec), null);
   // 4. Time by Day Type
-  html += renderBarReport('Time by Day Type', 'Distribution across morphocycle day types', aggregateBy(recs, e=>e.regime), null);
+  html += renderBarReport('Time by Physiological Dominance', 'Distribution across physiological dominance', aggregateBy(recs, e=>e.regime), planPhysioColor);
   // 5. Time by Distance to Game (MD)
   html += renderBarReport('Time by Distance to Game (MD)', 'How time is distributed relative to match day', aggregateBy(recs, e=>e.md), null);
   // 6. Matrix: Content × Scale
   html += renderMatrixReport('Content × Scale', 'Cross-tab of content by organisational scale', recs, e=>e.content, state.taxonomy.scales, state.taxonomy.contents);
   // 7. Matrix: Day Type × Content
-  html += renderMatrixReportRC('Day Type × Content', 'Type of training (day type) by content', recs);
+  html += renderMatrixReportRC('Physio Dominance × Content', 'Physiological dominance by content', recs);
 
   // Planned vs Done
   html += renderPlannedVsDone(recs);
